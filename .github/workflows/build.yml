@@ -13,19 +13,23 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup .NET SDK
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '8.0.x'
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Setup NuGet
+        uses: NuGet/setup-nuget@v2
 
       - name: Restore dependencies
-        run: dotnet restore DetelinaPivotReports/DetelinaPivotReports/DetelinaPivotReports.csproj
+        run: nuget restore DetelinaPivotReports/DetelinaPivotReports.sln
 
       - name: Build DetelinaPivotReports (.NET Framework 4.8 Release)
-        run: dotnet build DetelinaPivotReports/DetelinaPivotReports/DetelinaPivotReports.csproj -c Release -o ./publish
+        run: msbuild DetelinaPivotReports/DetelinaPivotReports.sln /p:Configuration=Release /p:Platform="Any CPU"
 
-      - name: Copy appsettings.json to output
+      - name: Prepare publish folder
+        shell: pwsh
         run: |
+          New-Item -ItemType Directory -Force -Path ./publish
+          Copy-Item -Path "DetelinaPivotReports/DetelinaPivotReports/bin/Release/*" -Destination "./publish" -Recurse -Force
           if (Test-Path "DetelinaPivotReports/DetelinaPivotReports/appsettings.json") {
             Copy-Item -Path "DetelinaPivotReports/DetelinaPivotReports/appsettings.json" -Destination "./publish/appsettings.json" -Force
           }
