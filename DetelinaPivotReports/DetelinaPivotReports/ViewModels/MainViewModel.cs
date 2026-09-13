@@ -321,19 +321,19 @@ public class MainViewModel : ViewModelBase
 
             // Актуализиране на KPIs
             KpiTotalQuantity = _pivotResult.GrandTotal;
-            KpiUniqueArticles = _pivotResult.TotalArticlesCount;
-            KpiActiveDays = _pivotResult.ActiveDaysCount;
-            KpiTopArticle = _pivotResult.TopArticleQuantity > 0 
-                ? $"{_pivotResult.TopArticleName} ({_pivotResult.TopArticleQuantity:#,##0.##} бр.)" 
+            KpiUniqueArticles = _pivotResult.TotalModelsCount;
+            KpiActiveDays = _pivotResult.TotalSizesCount;
+            KpiTopArticle = _pivotResult.TopModelQuantity > 0 
+                ? $"{_pivotResult.TopModelName} ({_pivotResult.TopModelQuantity:#,##0.##} бр.)" 
                 : "—";
-            KpiPeakDate = _pivotResult.PeakDate.HasValue 
-                ? $"{_pivotResult.PeakDate.Value:dd.MM.yyyy} ({_pivotResult.PeakDateQuantity:#,##0.##} бр.)" 
+            KpiPeakDate = _pivotResult.TopSizeQuantity > 0 
+                ? $"{_pivotResult.TopSizeName} ({_pivotResult.TopSizeQuantity:#,##0.##} бр.)" 
                 : "—";
 
             // Уведомяване на View за пренареждане на динамичните колони в DataGrid
             ReportColumnsGenerated?.Invoke(_pivotResult);
 
-            StatusMessage = $"Справката е генерирана за {sw.Elapsed.TotalSeconds:F2} сек. Намерени {_pivotResult.Rows.Count} артикула, общо {_pivotResult.GrandTotal:#,##0.##} бр.";
+            StatusMessage = $"Матрицата е генерирана за {sw.Elapsed.TotalSeconds:F2} сек. Намерени {_pivotResult.TotalModelsCount} модела в {_pivotResult.TotalSizesCount} размера, общо {_pivotResult.GrandTotal:#,##0.##} бр.";
         }
         catch (Exception ex)
         {
@@ -397,7 +397,7 @@ public class MainViewModel : ViewModelBase
                 .Replace("%", "[%]")
                 .Replace("*", "[*]");
 
-            _pivotDataView.RowFilter = $"Convert(PLU_CODE, 'System.String') LIKE '%{term}%' OR PLU_NAME LIKE '%{term}%'";
+            _pivotDataView.RowFilter = $"SIZE LIKE '%{term}%' OR IS_TOTAL_ROW = true";
         }
         catch
         {
@@ -413,7 +413,7 @@ public class MainViewModel : ViewModelBase
         {
             Title = "Експорт в Microsoft Excel",
             Filter = "Excel таблица (*.xlsx)|*.xlsx",
-            FileName = $"Справка_{_pivotResult.Filter.GroupName.Replace(" ", "_")}_{DateTime.Now:yyyyMMdd_HHmm}.xlsx"
+            FileName = $"Матрица_униформи_{_pivotResult.Filter.GroupName.Replace(" ", "_")}_{DateTime.Now:yyyyMMdd_HHmm}.xlsx"
         };
 
         if (sfd.ShowDialog() == true)
@@ -453,7 +453,7 @@ public class MainViewModel : ViewModelBase
         {
             Title = "Експорт в CSV файл",
             Filter = "CSV файл (*.csv)|*.csv",
-            FileName = $"Справка_{_pivotResult.Filter.GroupName.Replace(" ", "_")}_{DateTime.Now:yyyyMMdd_HHmm}.csv"
+            FileName = $"Матрица_униформи_{_pivotResult.Filter.GroupName.Replace(" ", "_")}_{DateTime.Now:yyyyMMdd_HHmm}.csv"
         };
 
         if (sfd.ShowDialog() == true)

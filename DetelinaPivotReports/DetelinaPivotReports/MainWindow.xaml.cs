@@ -37,41 +37,43 @@ public partial class MainWindow : Window
 
     private void OnReportColumnsGenerated(PivotReportResult result)
     {
-        // Премахване на предишните динамични колони (запазват се само първите 2: Код и Наименование)
-        while (PivotGrid.Columns.Count > 2)
+        // Запазва се само първата фиксирана колона (Размер)
+        while (PivotGrid.Columns.Count > 1)
         {
             PivotGrid.Columns.RemoveAt(PivotGrid.Columns.Count - 1);
         }
 
         var zeroConverter = (ZeroToDashConverter)FindResource("ZeroToDashConverter");
 
-        // 1. Динамични колони за всяка дата от периода
-        foreach (var date in result.Dates)
+        // 1. Динамични колони за всеки модел от номенклатурата
+        for (int i = 0; i < result.Models.Count; i++)
         {
-            string colProp = $"D_{date:yyyyMMdd}";
-            string dayAbbr = GetBgDayAbbr(date.DayOfWeek);
+            string modelName = result.Models[i];
+            string colKey = PivotReportResult.GetModelColumnKey(i);
 
             var cellStyle = new Style(typeof(TextBlock));
             cellStyle.Setters.Add(new Setter(TextBlock.TextAlignmentProperty, TextAlignment.Right));
             cellStyle.Setters.Add(new Setter(TextBlock.VerticalAlignmentProperty, VerticalAlignment.Center));
             cellStyle.Setters.Add(new Setter(FrameworkElement.MarginProperty, new Thickness(0, 0, 8, 0)));
 
+            double calculatedWidth = Math.Max(115, modelName.Length * 7.5 + 24);
+
             var col = new DataGridTextColumn
             {
-                Header = $"{date:dd.MM}\n({dayAbbr})",
-                Binding = new Binding($"[{colProp}]")
+                Header = modelName,
+                Binding = new Binding($"[{colKey}]")
                 {
                     Converter = zeroConverter
                 },
-                Width = new DataGridLength(72, DataGridLengthUnitType.Pixel),
+                Width = new DataGridLength(calculatedWidth, DataGridLengthUnitType.Pixel),
                 ElementStyle = cellStyle,
-                SortMemberPath = colProp
+                SortMemberPath = colKey
             };
 
             PivotGrid.Columns.Add(col);
         }
 
-        // 2. Колона ОБЩО
+        // 2. Крайна колона ОБЩО (сума за размера)
         var totalCellStyle = new Style(typeof(TextBlock));
         totalCellStyle.Setters.Add(new Setter(TextBlock.TextAlignmentProperty, TextAlignment.Right));
         totalCellStyle.Setters.Add(new Setter(TextBlock.VerticalAlignmentProperty, VerticalAlignment.Center));
@@ -86,23 +88,11 @@ public partial class MainWindow : Window
             {
                 StringFormat = "{0:#,##0.##}"
             },
-            Width = new DataGridLength(90, DataGridLengthUnitType.Pixel),
+            Width = new DataGridLength(95, DataGridLengthUnitType.Pixel),
             ElementStyle = totalCellStyle,
             SortMemberPath = "TOTAL"
         };
 
         PivotGrid.Columns.Add(totalCol);
     }
-
-    private static string GetBgDayAbbr(DayOfWeek day) => day switch
-    {
-        DayOfWeek.Monday => "Пн",
-        DayOfWeek.Tuesday => "Вт",
-        DayOfWeek.Wednesday => "Ср",
-        DayOfWeek.Thursday => "Чт",
-        DayOfWeek.Friday => "Пт",
-        DayOfWeek.Saturday => "Сб",
-        DayOfWeek.Sunday => "Нд",
-        _ => ""
-    };
 }

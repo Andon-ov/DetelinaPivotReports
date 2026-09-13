@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using System.Threading;
@@ -15,10 +16,10 @@ public class ExportService : IExportService
         await Task.Run(() =>
         {
             using var workbook = new XLWorkbook();
-            var ws = workbook.Worksheets.Add("Крос-таблична справка");
+            var ws = workbook.Worksheets.Add("Матрица униформи");
 
             // 1. Заглавна част
-            ws.Cell("A1").Value = "ОБОБЩЕНА КРОС-ТАБЛИЧНА СПРАВКА ПО ДНИ";
+            ws.Cell("A1").Value = "ОБОБЩЕНА МАТРИЧНА СПРАВКА ЗА ТЕКСТИЛ / УНИФОРМИ";
             ws.Cell("A1").Style.Font.Bold = true;
             ws.Cell("A1").Style.Font.FontSize = 16;
             ws.Cell("A1").Style.Font.FontColor = XLColor.FromHtml("#1F4E79");
@@ -36,15 +37,14 @@ public class ExportService : IExportService
             int headerRow = 6;
             int colIndex = 1;
 
-            // Заглавия на колоните
-            ws.Cell(headerRow, colIndex++).Value = "Код";
-            ws.Cell(headerRow, colIndex++).Value = "Наименование на артикул";
+            // Заглавия на колоните: Колона 1 е "Размер", следват Моделите, накрая "ОБЩО"
+            ws.Cell(headerRow, colIndex++).Value = "Размер";
 
-            int firstDateCol = colIndex;
-            foreach (var date in report.Dates)
+            int firstModelCol = colIndex;
+            foreach (var model in report.Models)
             {
                 var cell = ws.Cell(headerRow, colIndex++);
-                cell.Value = $"{date:dd.MM}\n({GetBgDayAbbr(date.DayOfWeek)})";
+                cell.Value = model;
                 cell.Style.Alignment.WrapText = true;
             }
             int totalCol = colIndex;
@@ -57,23 +57,24 @@ public class ExportService : IExportService
             headerRange.Style.Fill.BackgroundColor = XLColor.FromHtml("#1F4E79");
             headerRange.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
             headerRange.Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
-            ws.Row(headerRow).Height = 28;
+            ws.Row(headerRow).Height = 32;
 
-            // 2. Редове с данни
+            // 2. Редове с данни (всеки ред е Размер)
             int currentRow = headerRow + 1;
             foreach (var item in report.Rows)
             {
-                ws.Cell(currentRow, 1).Value = item.PluNumber;
+                // Колона 1: Размер
+                ws.Cell(currentRow, 1).Value = item.Size;
                 ws.Cell(currentRow, 1).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+                ws.Cell(currentRow, 1).Style.Font.Bold = true;
+                ws.Cell(currentRow, 1).Style.Font.FontColor = XLColor.FromHtml("#1F4E79");
 
-                ws.Cell(currentRow, 2).Value = item.ArticleName;
-                ws.Cell(currentRow, 2).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Left;
-
-                int dCol = firstDateCol;
-                foreach (var date in report.Dates)
+                // Стойности по модели
+                int mCol = firstModelCol;
+                foreach (var model in report.Models)
                 {
-                    decimal qty = item.GetQuantity(date);
-                    var cell = ws.Cell(currentRow, dCol++);
+                    decimal qty = item.GetQuantity(model);
+                    var cell = ws.Cell(currentRow, mCol++);
                     if (qty != 0)
                     {
                         cell.Value = qty;
@@ -88,6 +89,7 @@ public class ExportService : IExportService
                     }
                 }
 
+                // Крайна колона ОБЩО за дадения размер
                 var totCell = ws.Cell(currentRow, totalCol);
                 totCell.Value = item.TotalQuantity;
                 totCell.Style.Font.Bold = true;
@@ -98,18 +100,17 @@ public class ExportService : IExportService
                 currentRow++;
             }
 
-            // 3. Обобщаващ ред (Footer Totals)
-            ws.Cell(currentRow, 1).Value = "";
-            ws.Cell(currentRow, 2).Value = "ОБЩО ЗА ДЕНЯ:";
-            ws.Cell(currentRow, 2).Style.Font.Bold = true;
-            ws.Cell(currentRow, 2).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Right;
+            // 3. Обобщаващ ред най-долу (ОБЩО ЗА МОДЕЛА)
+            ws.Cell(currentRow, 1).Value = "ОБЩО ЗА МОДЕЛА:";
+            ws.Cell(currentRow, 1).Style.Font.Bold = true;
+            ws.Cell(currentRow, 1).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Right;
 
-            int totDCol = firstDateCol;
-            foreach (var date in report.Dates)
+            int totMCol = firstModelCol;
+            foreach (var model in report.Models)
             {
-                decimal dTotal = report.GetDailyTotal(date);
-                var cell = ws.Cell(currentRow, totDCol++);
-                cell.Value = dTotal;
+                decimal mTotal = report.GetModelTotal(model);
+                var cell = ws.Cell(currentRow, totMCol++);
+                cell.Value = mTotal;
                 cell.Style.Font.Bold = true;
                 cell.Style.NumberFormat.Format = "#,##0.##";
                 cell.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Right;
@@ -122,7 +123,7 @@ public class ExportService : IExportService
             grandCell.Style.Fill.BackgroundColor = XLColor.FromHtml("#D9E1F2");
             grandCell.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Right;
 
-            // Бордери на обобщаващия ред
+            // Бордери и фонове на обобщаващия ред
             var footerRange = ws.Range(currentRow, 1, currentRow, totalCol);
             footerRange.Style.Border.TopBorder = XLBorderStyleValues.Thin;
             footerRange.Style.Border.BottomBorder = XLBorderStyleValues.Double;
@@ -135,18 +136,17 @@ public class ExportService : IExportService
             dataTableRange.Style.Border.OutsideBorder = XLBorderStyleValues.Medium;
             dataTableRange.Style.Border.OutsideBorderColor = XLColor.FromHtml("#1F4E79");
 
-            // Замразяване на заглавните колони (Код и Име) и ред
+            // Замразяване на заглавния ред и колоната с размери
             ws.SheetView.FreezeRows(headerRow);
-            ws.SheetView.FreezeColumns(2);
+            ws.SheetView.FreezeColumns(1);
 
             // Автоматично оразмеряване на колоните
             ws.Columns(1, totalCol).AdjustToContents();
-            ws.Column(1).Width = Math.Max(ws.Column(1).Width, 10);
-            ws.Column(2).Width = Math.Min(Math.Max(ws.Column(2).Width, 30), 60);
+            ws.Column(1).Width = Math.Max(ws.Column(1).Width, 14);
 
-            for (int c = firstDateCol; c <= totalCol; c++)
+            for (int c = firstModelCol; c <= totalCol; c++)
             {
-                ws.Column(c).Width = Math.Max(ws.Column(c).Width, 12);
+                ws.Column(c).Width = Math.Max(ws.Column(c).Width, 14);
             }
 
             workbook.SaveAs(filePath);
@@ -158,7 +158,7 @@ public class ExportService : IExportService
         var sb = new StringBuilder();
 
         // Заглавна част
-        sb.AppendLine($"# Обобщена крос-таблична справка по дни");
+        sb.AppendLine($"# Обобщена матрична справка за текстил и униформи");
         sb.AppendLine($"# Група:;{report.Filter.GroupName}");
         sb.AppendLine($"# Период:;{report.Filter.StartDate:dd.MM.yyyy};—;{report.Filter.EndDate:dd.MM.yyyy}");
         sb.AppendLine($"# Терминал:;{(report.Filter.TerminalId > 0 ? report.Filter.TerminalName : "Всички")}");
@@ -166,26 +166,25 @@ public class ExportService : IExportService
         sb.AppendLine();
 
         // Заглавен ред
-        var headerCols = new List<string> { "Код", "Наименование на артикул" };
-        foreach (var d in report.Dates)
+        var headerCols = new List<string> { "Размер" };
+        foreach (var m in report.Models)
         {
-            headerCols.Add($"{d:dd.MM.yyyy} ({GetBgDayAbbr(d.DayOfWeek)})");
+            headerCols.Add($"\"{m.Replace("\"", "\"\"")}\"");
         }
         headerCols.Add("ОБЩО");
         sb.AppendLine(string.Join(";", headerCols));
 
-        // Редове с артикули
+        // Редове с размери
         foreach (var item in report.Rows)
         {
             var rowCols = new List<string>
             {
-                item.PluNumber.ToString(),
-                $"\"{item.ArticleName.Replace("\"", "\"\"")}\""
+                $"\"{item.Size.Replace("\"", "\"\"")}\""
             };
 
-            foreach (var d in report.Dates)
+            foreach (var m in report.Models)
             {
-                decimal qty = item.GetQuantity(d);
+                decimal qty = item.GetQuantity(m);
                 rowCols.Add(qty.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture));
             }
 
@@ -193,11 +192,11 @@ public class ExportService : IExportService
             sb.AppendLine(string.Join(";", rowCols));
         }
 
-        // Ред с общи суми
-        var totalsRow = new List<string> { "", "ОБЩО ЗА ДЕНЯ:" };
-        foreach (var d in report.Dates)
+        // Ред с общи суми по модели най-долу
+        var totalsRow = new List<string> { "ОБЩО ЗА МОДЕЛА:" };
+        foreach (var m in report.Models)
         {
-            totalsRow.Add(report.GetDailyTotal(d).ToString("0.##", System.Globalization.CultureInfo.InvariantCulture));
+            totalsRow.Add(report.GetModelTotal(m).ToString("0.##", System.Globalization.CultureInfo.InvariantCulture));
         }
         totalsRow.Add(report.GrandTotal.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture));
         sb.AppendLine(string.Join(";", totalsRow));
@@ -210,10 +209,10 @@ public class ExportService : IExportService
     {
         var sb = new StringBuilder();
 
-        var headerCols = new List<string> { "Код", "Наименование на артикул" };
-        foreach (var d in report.Dates)
+        var headerCols = new List<string> { "Размер" };
+        foreach (var m in report.Models)
         {
-            headerCols.Add($"{d:dd.MM.yyyy}");
+            headerCols.Add(m);
         }
         headerCols.Add("ОБЩО");
         sb.AppendLine(string.Join("\t", headerCols));
@@ -222,13 +221,12 @@ public class ExportService : IExportService
         {
             var rowCols = new List<string>
             {
-                item.PluNumber.ToString(),
-                item.ArticleName
+                item.Size
             };
 
-            foreach (var d in report.Dates)
+            foreach (var m in report.Models)
             {
-                decimal qty = item.GetQuantity(d);
+                decimal qty = item.GetQuantity(m);
                 rowCols.Add(qty != 0 ? qty.ToString("0.##") : "0");
             }
 
@@ -236,26 +234,14 @@ public class ExportService : IExportService
             sb.AppendLine(string.Join("\t", rowCols));
         }
 
-        var totalsRow = new List<string> { "", "ОБЩО ЗА ДЕНЯ:" };
-        foreach (var d in report.Dates)
+        var totalsRow = new List<string> { "ОБЩО ЗА МОДЕЛА:" };
+        foreach (var m in report.Models)
         {
-            totalsRow.Add(report.GetDailyTotal(d).ToString("0.##"));
+            totalsRow.Add(report.GetModelTotal(m).ToString("0.##"));
         }
         totalsRow.Add(report.GrandTotal.ToString("0.##"));
         sb.AppendLine(string.Join("\t", totalsRow));
 
         return sb.ToString();
     }
-
-    private static string GetBgDayAbbr(DayOfWeek day) => day switch
-    {
-        DayOfWeek.Monday => "Пн",
-        DayOfWeek.Tuesday => "Вт",
-        DayOfWeek.Wednesday => "Ср",
-        DayOfWeek.Thursday => "Чт",
-        DayOfWeek.Friday => "Пт",
-        DayOfWeek.Saturday => "Сб",
-        DayOfWeek.Sunday => "Нд",
-        _ => ""
-    };
 }

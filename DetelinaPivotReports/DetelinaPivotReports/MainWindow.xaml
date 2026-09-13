@@ -6,7 +6,7 @@
         xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
         xmlns:viewModels="clr-namespace:DetelinaPivotReports.ViewModels"
         mc:Ignorable="d"
-        Title="Детелина / Eltrade — Обобщени крос-таблични справки (Pivot Matrix)" 
+        Title="Детелина / Eltrade — Матрични справки за униформи (Размери × Модели)" 
         Height="860" Width="1350" MinHeight="650" MinWidth="1050"
         WindowStartupLocation="CenterScreen"
         Background="#F8FAFC"
@@ -44,7 +44,7 @@
                     </Border>
                     <StackPanel VerticalAlignment="Center">
                         <TextBlock Text="Детелина / Eltrade BackOffice" FontSize="18" FontWeight="Bold" Foreground="White"/>
-                        <TextBlock Text="Обобщени крос-таблични (Pivot / Matrix) справки за училищни униформи" FontSize="12" Foreground="#CBD5E0"/>
+                        <TextBlock Text="Обобщена матрица за текстил и униформи (Редове: Размери | Колони: Модели)" FontSize="12" Foreground="#CBD5E0"/>
                     </StackPanel>
                 </StackPanel>
 
@@ -120,10 +120,10 @@
                                   FontSize="13"/>
                     </StackPanel>
 
-                    <!-- Опции за празни дни -->
+                    <!-- Опции за празни размери -->
                     <CheckBox Grid.Column="5" IsChecked="{Binding HideEmptyDays}" 
-                              Content="Скриване на празни дни" VerticalAlignment="Bottom" Margin="0,0,0,4"
-                              ToolTip="Показва колони само за дните, в които има реално регистрирани продажби"
+                              Content="Скриване на празни размери" VerticalAlignment="Bottom" Margin="0,0,0,4"
+                              ToolTip="Показва само размерите, за които има регистрирани продажби за периода"
                               FontSize="12" Foreground="#4A5568"/>
                 </Grid>
 
@@ -246,32 +246,32 @@
                     </StackPanel>
                 </Border>
 
-                <!-- Карта 2: Уникални артикули -->
+                <!-- Карта 2: Уникални модели -->
                 <Border Style="{StaticResource MetricCardStyle}">
                     <StackPanel>
-                        <TextBlock Text="УНИКАЛНИ АРТИКУЛИ" FontSize="11" FontWeight="Bold" Foreground="#718096"/>
+                        <TextBlock Text="УНИКАЛНИ МОДЕЛИ" FontSize="11" FontWeight="Bold" Foreground="#718096"/>
                         <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
                             <TextBlock Text="{Binding KpiUniqueArticles}" FontSize="18" FontWeight="Bold" Foreground="#2B6CB0"/>
-                            <TextBlock Text=" позиции" FontSize="12" Foreground="#718096" VerticalAlignment="Bottom" Margin="3,0,0,2"/>
+                            <TextBlock Text=" модела" FontSize="12" Foreground="#718096" VerticalAlignment="Bottom" Margin="3,0,0,2"/>
                         </StackPanel>
                     </StackPanel>
                 </Border>
 
-                <!-- Карта 3: Дни с продажби -->
+                <!-- Карта 3: Активни размери -->
                 <Border Style="{StaticResource MetricCardStyle}">
                     <StackPanel>
-                        <TextBlock Text="АКТИВНИ ДНИ" FontSize="11" FontWeight="Bold" Foreground="#718096"/>
+                        <TextBlock Text="АКТИВНИ РАЗМЕРИ" FontSize="11" FontWeight="Bold" Foreground="#718096"/>
                         <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
                             <TextBlock Text="{Binding KpiActiveDays}" FontSize="18" FontWeight="Bold" Foreground="#319795"/>
-                            <TextBlock Text=" дни" FontSize="12" Foreground="#718096" VerticalAlignment="Bottom" Margin="3,0,0,2"/>
+                            <TextBlock Text=" размера" FontSize="12" Foreground="#718096" VerticalAlignment="Bottom" Margin="3,0,0,2"/>
                         </StackPanel>
                     </StackPanel>
                 </Border>
 
-                <!-- Карта 4: Пиков ден -->
+                <!-- Карта 4: Най-търсен размер -->
                 <Border Style="{StaticResource MetricCardStyle}">
                     <StackPanel>
-                        <TextBlock Text="НАЙ-СИЛЕН ДЕН" FontSize="11" FontWeight="Bold" Foreground="#718096"/>
+                        <TextBlock Text="ТОП РАЗМЕР" FontSize="11" FontWeight="Bold" Foreground="#718096"/>
                         <TextBlock Text="{Binding KpiPeakDate}" FontSize="13" FontWeight="SemiBold" Foreground="#D69E2E" Margin="0,4,0,0" TextTrimming="CharacterEllipsis"/>
                     </StackPanel>
                 </Border>
@@ -289,7 +289,7 @@
                     <materialDesign:PackIcon Grid.Column="0" Kind="Magnify" Foreground="#A0AEC0" Width="20" Height="20" VerticalAlignment="Center" Margin="0,0,8,0"/>
 
                     <TextBox Grid.Column="1" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
-                             materialDesign:HintAssist.Hint="Търсене в таблицата по име или код..."
+                             materialDesign:HintAssist.Hint="Търсене по размер (напр. 128, M, S)..."
                              BorderThickness="0" VerticalAlignment="Center" FontSize="13"/>
 
                     <Button Grid.Column="2" Command="{Binding ClearSearchCommand}"
@@ -343,6 +343,19 @@
                           SelectionMode="Extended"
                           SelectionUnit="FullRow">
 
+                    <DataGrid.RowStyle>
+                        <Style TargetType="DataGridRow" BasedOn="{StaticResource MaterialDesignDataGridRow}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding [IS_TOTAL_ROW]}" Value="True">
+                                    <Setter Property="Background" Value="#EBF8FF"/>
+                                    <Setter Property="FontWeight" Value="Bold"/>
+                                    <Setter Property="BorderThickness" Value="0,1.5,0,1.5"/>
+                                    <Setter Property="BorderBrush" Value="#2B6CB0"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </DataGrid.RowStyle>
+
                     <DataGrid.ColumnHeaderStyle>
                         <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource MaterialDesignDataGridColumnHeader}">
                             <Setter Property="Background" Value="#EDF2F7"/>
@@ -357,33 +370,20 @@
                     </DataGrid.ColumnHeaderStyle>
 
                     <DataGrid.Columns>
-                        <!-- 1. Код на артикула -->
-                        <DataGridTextColumn Header="Код" Binding="{Binding [PLU_CODE]}" 
-                                            Width="75" SortMemberPath="PLU_CODE">
+                        <!-- 1. Фиксирана колона: Размер -->
+                        <DataGridTextColumn Header="Размер" Binding="{Binding [SIZE]}" 
+                                            Width="110" SortMemberPath="SORT_ORDER">
                             <DataGridTextColumn.ElementStyle>
                                 <Style TargetType="TextBlock">
                                     <Setter Property="TextAlignment" Value="Center"/>
                                     <Setter Property="VerticalAlignment" Value="Center"/>
-                                    <Setter Property="FontWeight" Value="Medium"/>
-                                    <Setter Property="Foreground" Value="#4A5568"/>
+                                    <Setter Property="FontWeight" Value="Bold"/>
+                                    <Setter Property="Foreground" Value="#1F4E79"/>
                                 </Style>
                             </DataGridTextColumn.ElementStyle>
                         </DataGridTextColumn>
 
-                        <!-- 2. Име на артикула -->
-                        <DataGridTextColumn Header="Наименование на артикул" Binding="{Binding [PLU_NAME]}" 
-                                            Width="320" SortMemberPath="PLU_NAME">
-                            <DataGridTextColumn.ElementStyle>
-                                <Style TargetType="TextBlock">
-                                    <Setter Property="TextAlignment" Value="Left"/>
-                                    <Setter Property="VerticalAlignment" Value="Center"/>
-                                    <Setter Property="Margin" Value="8,0,0,0"/>
-                                    <Setter Property="Foreground" Value="#1A202C"/>
-                                </Style>
-                            </DataGridTextColumn.ElementStyle>
-                        </DataGridTextColumn>
-
-                        <!-- Динамичните колони за всяка дата и колоната ОБЩО се добавят в code-behind -->
+                        <!-- Динамичните колони за всеки модел и крайната колона ОБЩО се добавят в code-behind -->
                     </DataGrid.Columns>
                 </DataGrid>
             </Grid>
@@ -398,12 +398,17 @@
                     <TextBlock Text="ОБЩО ЗА ПЕРИОДА:" FontWeight="Bold" FontSize="13" Foreground="#2B6CB0" VerticalAlignment="Center"/>
                     <TextBlock Text="{Binding KpiTotalQuantity, StringFormat=' {0:#,##0.##} бр.'}" FontWeight="Bold" FontSize="14" Foreground="#1F4E79" VerticalAlignment="Center"/>
                     <TextBlock Text=" · " Foreground="#A0AEC0" VerticalAlignment="Center"/>
-                    <TextBlock Text="{Binding KpiUniqueArticles, StringFormat='{}{0} различни артикула'}" Foreground="#4A5568" VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding KpiUniqueArticles, StringFormat='{}{0} модела'}" Foreground="#4A5568" VerticalAlignment="Center"/>
+                    <TextBlock Text=" в " Foreground="#A0AEC0" VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding KpiActiveDays, StringFormat='{}{0} размера'}" Foreground="#4A5568" VerticalAlignment="Center"/>
                 </StackPanel>
 
                 <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" VerticalAlignment="Center">
-                    <TextBlock Text="Най-продаван: " FontSize="12" Foreground="#718096" VerticalAlignment="Center"/>
-                    <TextBlock Text="{Binding KpiTopArticle}" FontSize="12" FontWeight="SemiBold" Foreground="#2D3748" VerticalAlignment="Center"/>
+                    <TextBlock Text="Топ модел: " FontSize="12" Foreground="#718096" VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding KpiTopArticle}" FontSize="12" FontWeight="SemiBold" Foreground="#2D3748" VerticalAlignment="Center" Margin="0,0,16,0"/>
+
+                    <TextBlock Text="Топ размер: " FontSize="12" Foreground="#718096" VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding KpiPeakDate}" FontSize="12" FontWeight="SemiBold" Foreground="#2D3748" VerticalAlignment="Center"/>
                 </StackPanel>
             </DockPanel>
         </Border>
