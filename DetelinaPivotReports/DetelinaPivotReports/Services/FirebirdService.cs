@@ -155,7 +155,7 @@ public class FirebirdService : IFirebirdService
         sqlBuilder.AppendLine(@"
             SELECT 
                 SP.SPLU_PLUNUMB,
-                COALESCE(P.PLU_NAME, SP.SPLU_NAME) AS ARTICLE_NAME,
+                COALESCE(NULLIF(TRIM(SP.SPLU_NAME), ''), P.PLU_NAME) AS ARTICLE_NAME,
                 CAST(SB.SELL_DATETIME AS DATE) AS SALE_DATE,
                 SUM(SP.SPLU_SOLDQUANT) AS TOTAL_QUANTITY
             FROM SALES_PLUES SP
@@ -205,8 +205,8 @@ public class FirebirdService : IFirebirdService
         }
 
         sqlBuilder.AppendLine(@"
-            GROUP BY SP.SPLU_PLUNUMB, COALESCE(P.PLU_NAME, SP.SPLU_NAME), CAST(SB.SELL_DATETIME AS DATE)
-            ORDER BY COALESCE(P.PLU_NAME, SP.SPLU_NAME), SP.SPLU_PLUNUMB, CAST(SB.SELL_DATETIME AS DATE)");
+            GROUP BY SP.SPLU_PLUNUMB, COALESCE(NULLIF(TRIM(SP.SPLU_NAME), ''), P.PLU_NAME), CAST(SB.SELL_DATETIME AS DATE)
+            ORDER BY COALESCE(NULLIF(TRIM(SP.SPLU_NAME), ''), P.PLU_NAME), SP.SPLU_PLUNUMB, CAST(SB.SELL_DATETIME AS DATE)");
 
         cmd.CommandText = sqlBuilder.ToString();
 
@@ -214,7 +214,9 @@ public class FirebirdService : IFirebirdService
         while (await reader.ReadAsync(ct))
         {
             int pluNumber = reader.GetInt32(0);
-            string articleName = reader.IsDBNull(1) ? $"Артикул {pluNumber}" : reader.GetString(1).Trim();
+            string articleName = reader.IsDBNull(1) || string.IsNullOrWhiteSpace(reader.GetString(1)) 
+                ? $"Артикул {pluNumber}" 
+                : reader.GetString(1).Trim();
             DateTime saleDate = reader.GetDateTime(2);
             decimal quantity = reader.IsDBNull(3) ? 0m : Convert.ToDecimal(reader.GetValue(3));
 
