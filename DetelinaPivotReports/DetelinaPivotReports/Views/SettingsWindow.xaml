@@ -1,0 +1,157 @@
+<Window x:Class="DetelinaPivotReports.Views.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+        xmlns:viewModels="clr-namespace:DetelinaPivotReports.ViewModels"
+        mc:Ignorable="d"
+        Title="Настройки на връзката към Firebird база данни" 
+        Height="540" Width="600"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        Background="{DynamicResource MaterialDesignPaper}"
+        TextElement.Foreground="{DynamicResource MaterialDesignBody}"
+        FontFamily="Segoe UI, Roboto, Arial">
+
+    <Grid Margin="24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Заглавие -->
+        <StackPanel Grid.Row="0" Margin="0,0,0,16">
+            <TextBlock Text="Конфигурация на базата данни (Firebird 3.0)" 
+                       FontSize="18" FontWeight="SemiBold" 
+                       Foreground="#1F4E79"/>
+            <TextBlock Text="Настройките се зареждат и записват във външния файл appsettings.json" 
+                       FontSize="12" Foreground="Gray" Margin="0,4,0,0"/>
+        </StackPanel>
+
+        <!-- Форма -->
+        <Border Grid.Row="1" Background="#FAFAFA" BorderBrush="#E0E0E0" BorderThickness="1" CornerRadius="8" Padding="16">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <StackPanel>
+                    <!-- Host & Port -->
+                    <Grid Margin="0,0,0,12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="3*"/>
+                            <ColumnDefinition Width="16"/>
+                            <ColumnDefinition Width="1*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBox Grid.Column="0" Text="{Binding Host, UpdateSourceTrigger=PropertyChanged}"
+                                 materialDesign:HintAssist.Hint="Сървър / Host (напр. localhost или IP адрес)" 
+                                 Style="{StaticResource MaterialDesignFloatingHintTextBox}"/>
+                        <TextBox Grid.Column="2" Text="{Binding Port, UpdateSourceTrigger=PropertyChanged}"
+                                 materialDesign:HintAssist.Hint="Порт (по подразбиране 3050)" 
+                                 Style="{StaticResource MaterialDesignFloatingHintTextBox}"/>
+                    </Grid>
+
+                    <!-- Database Path + Browse -->
+                    <Grid Margin="0,0,0,12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBox Grid.Column="0" Text="{Binding Database, UpdateSourceTrigger=PropertyChanged}"
+                                 materialDesign:HintAssist.Hint="Пълен път до .GDB / .FDB файл на сървъра" 
+                                 Style="{StaticResource MaterialDesignFloatingHintTextBox}"/>
+                        <Button Grid.Column="1" Command="{Binding BrowseDatabaseCommand}"
+                                Margin="8,10,0,0" ToolTip="Изберете файл от диска"
+                                Style="{StaticResource MaterialDesignOutlinedButton}">
+                            <materialDesign:PackIcon Kind="FolderOpenOutline"/>
+                        </Button>
+                    </Grid>
+
+                    <!-- User & Password -->
+                    <Grid Margin="0,0,0,12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="1*"/>
+                            <ColumnDefinition Width="16"/>
+                            <ColumnDefinition Width="1*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBox Grid.Column="0" Text="{Binding User, UpdateSourceTrigger=PropertyChanged}"
+                                 materialDesign:HintAssist.Hint="Потребител (User: SYSDBA или ATMKIOSK)" 
+                                 Style="{StaticResource MaterialDesignFloatingHintTextBox}"/>
+                        <TextBox Grid.Column="2" Text="{Binding Password, UpdateSourceTrigger=PropertyChanged}"
+                                 materialDesign:HintAssist.Hint="Парола (Password)" 
+                                 Style="{StaticResource MaterialDesignFloatingHintTextBox}"/>
+                    </Grid>
+
+                    <!-- Charset & Timeout -->
+                    <Grid Margin="0,0,0,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="1*"/>
+                            <ColumnDefinition Width="16"/>
+                            <ColumnDefinition Width="1*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBox Grid.Column="0" Text="{Binding Charset, UpdateSourceTrigger=PropertyChanged}"
+                                 materialDesign:HintAssist.Hint="Кодировка (Charset: WIN1251 / UTF8)" 
+                                 Style="{StaticResource MaterialDesignFloatingHintTextBox}"/>
+                        <TextBox Grid.Column="2" Text="{Binding ConnectionTimeout, UpdateSourceTrigger=PropertyChanged}"
+                                 materialDesign:HintAssist.Hint="Време за връзка (Timeout сек)" 
+                                 Style="{StaticResource MaterialDesignFloatingHintTextBox}"/>
+                    </Grid>
+                </StackPanel>
+            </ScrollViewer>
+        </Border>
+
+        <!-- Тестов статус -->
+        <Border Grid.Row="2" Margin="0,12,0,12" Padding="10" CornerRadius="6"
+                Background="#F5F5F5" BorderThickness="1" BorderBrush="#E0E0E0">
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <ProgressBar IsIndeterminate="True" Width="18" Height="18" Margin="0,0,8,0"
+                             Visibility="{Binding IsTesting, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                <materialDesign:PackIcon Kind="CheckCircle" Foreground="Green" Width="20" Height="20" Margin="0,0,8,0"
+                                         Visibility="{Binding TestSuccess, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                <materialDesign:PackIcon Kind="CloseCircle" Foreground="#E53E3E" Width="20" Height="20" Margin="0,0,8,0">
+                    <materialDesign:PackIcon.Style>
+                        <Style TargetType="materialDesign:PackIcon">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding TestSuccess}" Value="False">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </materialDesign:PackIcon.Style>
+                </materialDesign:PackIcon>
+                <TextBlock Text="{Binding TestStatusMessage}" 
+                           TextWrapping="Wrap" MaxWidth="500"
+                           FontWeight="Medium"
+                           FontSize="12" VerticalAlignment="Center"/>
+            </StackPanel>
+        </Border>
+
+        <!-- Бутони -->
+        <DockPanel Grid.Row="3" LastChildFill="False">
+            <Button DockPanel.Dock="Left" Command="{Binding TestConnectionCommand}"
+                    Style="{StaticResource MaterialDesignOutlinedButton}"
+                    BorderBrush="#1F4E79" Foreground="#1F4E79">
+                <StackPanel Orientation="Horizontal">
+                    <materialDesign:PackIcon Kind="DatabaseSyncOutline" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                    <TextBlock Text="Тест на връзката"/>
+                </StackPanel>
+            </Button>
+
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                <Button Command="{Binding CancelCommand}" Margin="0,0,8,0"
+                        Style="{StaticResource MaterialDesignFlatButton}">
+                    <TextBlock Text="Отказ"/>
+                </Button>
+
+                <Button Command="{Binding SaveCommand}"
+                        Background="#1F4E79" BorderBrush="#1F4E79" Foreground="White"
+                        Style="{StaticResource MaterialDesignRaisedButton}">
+                    <StackPanel Orientation="Horizontal">
+                        <materialDesign:PackIcon Kind="ContentSaveOutline" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                        <TextBlock Text="Запази настройките"/>
+                    </StackPanel>
+                </Button>
+            </StackPanel>
+        </DockPanel>
+    </Grid>
+</Window>

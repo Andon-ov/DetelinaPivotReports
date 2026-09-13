@@ -1,0 +1,22 @@
+# Build outputs
+**/bin/
+**/obj/
+**/publish/
+publish/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Large database and archives (protect customer data)
+*.gdb
+*.fdb
+*.zip
+*.sql
+Other/
+
+# Log files
+*.log

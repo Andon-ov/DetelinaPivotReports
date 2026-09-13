@@ -1,0 +1,38 @@
+name: Build .NET 4.8 Application
+
+on:
+  push:
+    branches: [ "**" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-2022
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore DetelinaPivotReports/DetelinaPivotReports/DetelinaPivotReports.csproj
+
+      - name: Build DetelinaPivotReports (.NET Framework 4.8 Release)
+        run: dotnet build DetelinaPivotReports/DetelinaPivotReports/DetelinaPivotReports.csproj -c Release -o ./publish
+
+      - name: Copy appsettings.json to output
+        run: |
+          if (Test-Path "DetelinaPivotReports/DetelinaPivotReports/appsettings.json") {
+            Copy-Item -Path "DetelinaPivotReports/DetelinaPivotReports/appsettings.json" -Destination "./publish/appsettings.json" -Force
+          }
+
+      - name: Upload Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: DetelinaPivotReports-net48-Release
+          path: ./publish
+          retention-days: 30

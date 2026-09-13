@@ -1,0 +1,21 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.8.34330.188
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DetelinaPivotReports", "DetelinaPivotReports\DetelinaPivotReports.csproj", "{B8F4A1E2-67C9-4C52-A5E8-892C5E7D8A11}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{B8F4A1E2-67C9-4C52-A5E8-892C5E7D8A11}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B8F4A1E2-67C9-4C52-A5E8-892C5E7D8A11}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B8F4A1E2-67C9-4C52-A5E8-892C5E7D8A11}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B8F4A1E2-67C9-4C52-A5E8-892C5E7D8A11}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

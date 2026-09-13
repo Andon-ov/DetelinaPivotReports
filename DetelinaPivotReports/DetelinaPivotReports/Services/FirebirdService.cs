@@ -1,0 +1,275 @@
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Linq;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+using DetelinaPivotReports.Models;
+using FirebirdSql.Data.FirebirdClient;
+
+namespace DetelinaPivotReports.Services;
+
+public class FirebirdService : IFirebirdService
+{
+    static FirebirdService()
+    {
+        // Регистрация на поддръжка за Windows-1251 кодировка в .NET Core/.NET 8
+        Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+    }
+
+    public async Task<(bool Success, string Message, string? ServerVersion)> TestConnectionAsync(DatabaseSettings settings, CancellationToken ct = default)
+    {
+        try
+        {
+            string connString = settings.BuildConnectionString();
+            using var conn = new FbConnection(connString);
+            await conn.OpenAsync(ct);
+
+            string serverVersion = conn.ServerVersion;
+
+            // Тестова проверка на таблици
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "SELECT COUNT(*) FROM RDB$DATABASE";
+            await cmd.ExecuteScalarAsync(ct);
+
+            return (true, "Връзката към Firebird базата данни е успешна!", serverVersion);
+        }
+        catch (FbException fbEx)
+        {
+            return (false, $"Firebird SQL грешка [{fbEx.ErrorCode}]: {fbEx.Message}", null);
+        }
+        catch (Exception ex)
+        {
+            return (false, $"Неуспешно свързване: {ex.Message}", null);
+        }
+    }
+
+    public async Task<List<PlugroupItem>> GetPlugroupsAsync(DatabaseSettings settings, CancellationToken ct = default)
+    {
+        var rawList = new List<PlugroupItem>();
+
+        try
+        {
+            string connString = settings.BuildConnectionString();
+            using var conn = new FbConnection(connString);
+            await conn.OpenAsync(ct);
+
+            string sql = @"
+                SELECT 
+                    PGRP_ID, 
+                    PGRP_NAME, 
+                    PGRP_PARENT, 
+                    PGRP_CODE 
+                FROM N_PLUGROUPS 
+                ORDER BY PGRP_NAME";
+
+            using var cmd = new FbCommand(sql, conn);
+            using var reader = await cmd.ExecuteReaderAsync(ct);
+
+            while (await reader.ReadAsync(ct))
+            {
+                int id = reader.GetInt32(0);
+                string name = reader.IsDBNull(1) ? string.Empty : reader.GetString(1).Trim();
+                int parent = reader.IsDBNull(2) ? -1 : reader.GetInt32(2);
+                int code = reader.IsDBNull(3) ? 0 : reader.GetInt32(3);
+
+                rawList.Add(new PlugroupItem
+                {
+                    Id = id,
+                    Name = name,
+                    ParentId = parent,
+                    Code = code
+                });
+            }
+        }
+        catch (Exception)
+        {
+            // При грешка връщаме празен списък
+            return new List<PlugroupItem> { PlugroupItem.CreateAllGroupsOption() };
+        }
+
+        // Подреждане по йерархия
+        var organizedList = OrganizeHierarchy(rawList);
+        organizedList.Insert(0, PlugroupItem.CreateAllGroupsOption());
+        return organizedList;
+    }
+
+    public async Task<List<TerminalItem>> GetTerminalsAsync(DatabaseSettings settings, Dictionary<string, string> terminalNames, CancellationToken ct = default)
+    {
+        var list = new List<TerminalItem> { TerminalItem.CreateAllTerminalsOption() };
+
+        try
+        {
+            string connString = settings.BuildConnectionString();
+            using var conn = new FbConnection(connString);
+            await conn.OpenAsync(ct);
+
+            string sql = "SELECT DISTINCT SELL_TERMINAL FROM SALES_BON WHERE SELL_TERMINAL IS NOT NULL ORDER BY SELL_TERMINAL";
+            using var cmd = new FbCommand(sql, conn);
+            using var reader = await cmd.ExecuteReaderAsync(ct);
+
+            var foundTerminals = new HashSet<int>();
+            while (await reader.ReadAsync(ct))
+            {
+                int termId = reader.GetInt32(0);
+                foundTerminals.Add(termId);
+
+                string termName = terminalNames.TryGetValue(termId.ToString(), out var name) ? name : string.Empty;
+                list.Add(new TerminalItem { Id = termId, Name = termName });
+            }
+
+            // Ако няма намерени в продажбите, добавяме тези от настройките
+            foreach (var kvp in terminalNames)
+            {
+                if (int.TryParse(kvp.Key, out int termId) && !foundTerminals.Contains(termId))
+                {
+                    list.Add(new TerminalItem { Id = termId, Name = kvp.Value });
+                }
+            }
+        }
+        catch (Exception)
+        {
+            // Резервни терминали от config
+            foreach (var kvp in terminalNames)
+            {
+                if (int.TryParse(kvp.Key, out int termId))
+                {
+                    list.Add(new TerminalItem { Id = termId, Name = kvp.Value });
+                }
+            }
+        }
+
+        return list;
+    }
+
+    public async Task<List<ArticleSaleRecord>> GetSalesRecordsAsync(DatabaseSettings settings, ReportFilter filter, CancellationToken ct = default)
+    {
+        var results = new List<ArticleSaleRecord>();
+
+        string connString = settings.BuildConnectionString();
+        using var conn = new FbConnection(connString);
+        await conn.OpenAsync(ct);
+
+        var sqlBuilder = new StringBuilder();
+        sqlBuilder.AppendLine(@"
+            SELECT 
+                SP.SPLU_PLUNUMB,
+                COALESCE(P.PLU_NAME, SP.SPLU_NAME) AS ARTICLE_NAME,
+                CAST(SB.SELL_DATETIME AS DATE) AS SALE_DATE,
+                SUM(SP.SPLU_SOLDQUANT) AS TOTAL_QUANTITY
+            FROM SALES_PLUES SP
+            JOIN SALES_BON SB ON SP.SPLU_SELL_ID = SB.SELL_ID
+            LEFT JOIN PLUES P ON SP.SPLU_PLUNUMB = P.PLU_NUMB
+            WHERE SB.SELL_REVOKED_ = 0 
+              AND SP.SPLU_REVOKED_ = 0
+              AND SB.SELL_DATETIME >= @StartDate 
+              AND SB.SELL_DATETIME <= @EndDate");
+
+        using var cmd = new FbCommand();
+        cmd.Connection = conn;
+
+        // Параметри за дати (начало: 00:00:00, край: 23:59:59)
+        DateTime startDt = filter.StartDate.Date;
+        DateTime endDt = filter.EndDate.Date.AddDays(1).AddSeconds(-1);
+
+        cmd.Parameters.Add(new FbParameter("@StartDate", FbDbType.TimeStamp) { Value = startDt });
+        cmd.Parameters.Add(new FbParameter("@EndDate", FbDbType.TimeStamp) { Value = endDt });
+
+        // Филтър по терминал
+        if (filter.TerminalId > 0)
+        {
+            sqlBuilder.AppendLine("  AND SB.SELL_TERMINAL = @SelectedTerminal");
+            cmd.Parameters.Add(new FbParameter("@SelectedTerminal", FbDbType.Integer) { Value = filter.TerminalId });
+        }
+
+        // Филтър по група / училище
+        if (filter.GroupId > 0)
+        {
+            if (filter.IncludeSubgroups && filter.GroupIds.Count > 0)
+            {
+                var paramNames = new List<string>();
+                for (int i = 0; i < filter.GroupIds.Count; i++)
+                {
+                    string pName = $"@grp_{i}";
+                    paramNames.Add(pName);
+                    cmd.Parameters.Add(new FbParameter(pName, FbDbType.Integer) { Value = filter.GroupIds[i] });
+                }
+                sqlBuilder.AppendLine($"  AND P.PLU_GROUP_ID IN ({string.Join(", ", paramNames)})");
+            }
+            else
+            {
+                sqlBuilder.AppendLine("  AND P.PLU_GROUP_ID = @SelectedGroupId");
+                cmd.Parameters.Add(new FbParameter("@SelectedGroupId", FbDbType.Integer) { Value = filter.GroupId });
+            }
+        }
+
+        sqlBuilder.AppendLine(@"
+            GROUP BY SP.SPLU_PLUNUMB, COALESCE(P.PLU_NAME, SP.SPLU_NAME), CAST(SB.SELL_DATETIME AS DATE)
+            ORDER BY COALESCE(P.PLU_NAME, SP.SPLU_NAME), SP.SPLU_PLUNUMB, CAST(SB.SELL_DATETIME AS DATE)");
+
+        cmd.CommandText = sqlBuilder.ToString();
+
+        using var reader = await cmd.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+        {
+            int pluNumber = reader.GetInt32(0);
+            string articleName = reader.IsDBNull(1) ? $"Артикул {pluNumber}" : reader.GetString(1).Trim();
+            DateTime saleDate = reader.GetDateTime(2);
+            decimal quantity = reader.IsDBNull(3) ? 0m : Convert.ToDecimal(reader.GetValue(3));
+
+            results.Add(new ArticleSaleRecord
+            {
+                PluNumber = pluNumber,
+                ArticleName = articleName,
+                SaleDateTime = saleDate,
+                SoldQuantity = quantity,
+                Terminal = filter.TerminalId
+            });
+        }
+
+        return results;
+    }
+
+    private static List<PlugroupItem> OrganizeHierarchy(List<PlugroupItem> rawList)
+    {
+        var result = new List<PlugroupItem>();
+        var lookup = rawList.GroupBy(g => g.ParentId).ToDictionary(g => g.Key, g => g.OrderBy(x => x.Name).ToList());
+
+        void AddChildren(int parentId, int level)
+        {
+            if (lookup.TryGetValue(parentId, out var children))
+            {
+                foreach (var child in children)
+                {
+                    child.Level = level;
+                    result.Add(child);
+                    AddChildren(child.Id, level + 1);
+                }
+            }
+        }
+
+        // Коренови групи (ParentId <= 0 или ParentId липсва в rawList)
+        var allIds = new HashSet<int>(rawList.Select(x => x.Id));
+        var rootGroups = rawList
+            .Where(x => x.ParentId <= 0 || !allIds.Contains(x.ParentId))
+            .OrderBy(x => x.Name)
+            .ToList();
+
+        foreach (var root in rootGroups)
+        {
+            root.Level = 0;
+            result.Add(root);
+            AddChildren(root.Id, 1);
+        }
+
+        // Ако има останали неотчетени групи
+        var processedIds = new HashSet<int>(result.Select(x => x.Id));
+        foreach (var item in rawList.Where(x => !processedIds.Contains(x.Id)))
+        {
+            result.Add(item);
+        }
+
+        return result;
+    }
+}
