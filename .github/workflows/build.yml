@@ -20,18 +20,26 @@ jobs:
         uses: NuGet/setup-nuget@v2
 
       - name: Restore dependencies
-        run: nuget restore DetelinaPivotReports/DetelinaPivotReports.sln
+        shell: pwsh
+        run: |
+          $sln = if (Test-Path "DetelinaPivotReports.sln") { "DetelinaPivotReports.sln" } else { "DetelinaPivotReports/DetelinaPivotReports.sln" }
+          nuget restore $sln
 
       - name: Build DetelinaPivotReports (.NET Framework 4.8 Release)
-        run: msbuild DetelinaPivotReports/DetelinaPivotReports.sln /p:Configuration=Release /p:Platform="Any CPU"
+        shell: pwsh
+        run: |
+          $sln = if (Test-Path "DetelinaPivotReports.sln") { "DetelinaPivotReports.sln" } else { "DetelinaPivotReports/DetelinaPivotReports.sln" }
+          msbuild $sln /p:Configuration=Release /p:Platform="Any CPU"
 
       - name: Prepare publish folder
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path ./publish
-          Copy-Item -Path "DetelinaPivotReports/DetelinaPivotReports/bin/Release/*" -Destination "./publish" -Recurse -Force
-          if (Test-Path "DetelinaPivotReports/DetelinaPivotReports/appsettings.json") {
-            Copy-Item -Path "DetelinaPivotReports/DetelinaPivotReports/appsettings.json" -Destination "./publish/appsettings.json" -Force
+          $binPath = if (Test-Path "DetelinaPivotReports/bin/Release") { "DetelinaPivotReports/bin/Release/*" } else { "DetelinaPivotReports/DetelinaPivotReports/bin/Release/*" }
+          Copy-Item -Path $binPath -Destination "./publish" -Recurse -Force
+          $configPath = if (Test-Path "DetelinaPivotReports/appsettings.json") { "DetelinaPivotReports/appsettings.json" } else { "DetelinaPivotReports/DetelinaPivotReports/appsettings.json" }
+          if (Test-Path $configPath) {
+            Copy-Item -Path $configPath -Destination "./publish/appsettings.json" -Force
           }
 
       - name: Upload Build Artifact

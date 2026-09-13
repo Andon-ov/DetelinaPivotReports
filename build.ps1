@@ -7,10 +7,16 @@ Write-Host "=================================================================" -
 Write-Host ""
 
 $root = $PSScriptRoot
-$projectPath = Join-Path $root "DetelinaPivotReports\DetelinaPivotReports\DetelinaPivotReports.csproj"
+$projectPath = Join-Path $root "DetelinaPivotReports\DetelinaPivotReports.csproj"
+if (-not (Test-Path $projectPath)) {
+    $projectPath = Join-Path $root "DetelinaPivotReports\DetelinaPivotReports\DetelinaPivotReports.csproj"
+}
 $outPublish = Join-Path $root "publish"
 $exePath = Join-Path $root "DetelinaPivotReports.exe"
-$appSettingsSource = Join-Path $root "DetelinaPivotReports\DetelinaPivotReports\appsettings.json"
+$appSettingsSource = Join-Path $root "DetelinaPivotReports\appsettings.json"
+if (-not (Test-Path $appSettingsSource)) {
+    $appSettingsSource = Join-Path $root "DetelinaPivotReports\DetelinaPivotReports\appsettings.json"
+}
 
 # Find dotnet or msbuild
 $dotnetCmd = "dotnet"
