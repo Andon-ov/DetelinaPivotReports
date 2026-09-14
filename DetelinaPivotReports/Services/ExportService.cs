@@ -244,4 +244,230 @@ public class ExportService : IExportService
 
         return sb.ToString();
     }
+
+    public async Task ExportDetailedToExcelAsync(List<DetailedSaleRecord> records, ReportFilter filter, string filePath, CancellationToken ct = default)
+    {
+        await Task.Run(() =>
+        {
+            using var workbook = new XLWorkbook();
+            var ws = workbook.Worksheets.Add("Детайлни продажби");
+
+            // 1. Заглавна част
+            ws.Cell("A1").Value = "ДЕТАЙЛНА СПРАВКА ПРОДАЖБИ ПО ТЕРМИНАЛИ И БОНОВЕ";
+            ws.Cell("A1").Style.Font.Bold = true;
+            ws.Cell("A1").Style.Font.FontSize = 15;
+            ws.Cell("A1").Style.Font.FontColor = XLColor.FromHtml("#1F4E79");
+
+            ws.Cell("A2").Value = $"Училище / Група: {filter.GroupName}";
+            ws.Cell("A2").Style.Font.Bold = true;
+
+            string termInfo = filter.TerminalId > 0 
+                ? $"Терминал: {filter.TerminalName}" 
+                : "Всички терминали";
+            ws.Cell("A3").Value = $"Период: {filter.StartDate:dd.MM.yyyy} — {filter.EndDate:dd.MM.yyyy}  |  {termInfo}";
+            ws.Cell("A4").Value = $"Генерирана на: {DateTime.Now:dd.MM.yyyy HH:mm:ss}";
+            ws.Cell("A4").Style.Font.FontColor = XLColor.Gray;
+
+            int headerRow = 6;
+            string[] headers = 
+            {
+                "Терминал", 
+                "Бон No", 
+                "Дата/Час", 
+                "Тотал бон", 
+                "Арт.група", 
+                "Арт.No", 
+                "Артикул", 
+                "Количество", 
+                "Ед.цена", 
+                "Сума ред"
+            };
+
+            for (int i = 0; i < headers.Length; i++)
+            {
+                var cell = ws.Cell(headerRow, i + 1);
+                cell.Value = headers[i];
+            }
+
+            var headerRange = ws.Range(headerRow, 1, headerRow, headers.Length);
+            headerRange.Style.Font.Bold = true;
+            headerRange.Style.Font.FontColor = XLColor.White;
+            headerRange.Style.Fill.BackgroundColor = XLColor.FromHtml("#1F4E79");
+            headerRange.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+            headerRange.Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
+            ws.Row(headerRow).Height = 28;
+
+            int currentRow = headerRow + 1;
+            decimal totalQuantity = 0m;
+            decimal totalRowSum = 0m;
+
+            foreach (var r in records)
+            {
+                totalQuantity += r.Quantity;
+                totalRowSum += r.RowTotal;
+
+                // 1. Терминал
+                ws.Cell(currentRow, 1).Value = r.TerminalName;
+                ws.Cell(currentRow, 1).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+
+                // 2. Бон No
+                ws.Cell(currentRow, 2).Value = r.BonNumber;
+                ws.Cell(currentRow, 2).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+
+                // 3. Дата/Час
+                ws.Cell(currentRow, 3).Value = r.SaleDateTime.ToString("dd.MM.yyyy HH:mm:ss");
+                ws.Cell(currentRow, 3).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+
+                // 4. Тотал бон
+                var cellBonTot = ws.Cell(currentRow, 4);
+                cellBonTot.Value = r.BonTotal;
+                cellBonTot.Style.NumberFormat.Format = "#,##0.00";
+                cellBonTot.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Right;
+
+                // 5. Арт.група
+                ws.Cell(currentRow, 5).Value = r.GroupName;
+                ws.Cell(currentRow, 5).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Left;
+
+                // 6. Арт.No
+                ws.Cell(currentRow, 6).Value = r.PluNumber;
+                ws.Cell(currentRow, 6).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+
+                // 7. Артикул
+                ws.Cell(currentRow, 7).Value = r.ArticleName;
+                ws.Cell(currentRow, 7).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Left;
+
+                // 8. Количество
+                var cellQty = ws.Cell(currentRow, 8);
+                cellQty.Value = r.Quantity;
+                cellQty.Style.NumberFormat.Format = "#,##0.000";
+                cellQty.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Right;
+
+                // 9. Ед.цена
+                var cellPrice = ws.Cell(currentRow, 9);
+                cellPrice.Value = r.UnitPrice;
+                cellPrice.Style.NumberFormat.Format = "#,##0.00";
+                cellPrice.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Right;
+
+                // 10. Сума ред
+                var cellRowSum = ws.Cell(currentRow, 10);
+                cellRowSum.Value = r.RowTotal;
+                cellRowSum.Style.NumberFormat.Format = "#,##0.00";
+                cellRowSum.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Right;
+
+                currentRow++;
+            }
+
+            // Сумиращ ред най-долу
+            ws.Cell(currentRow, 1).Value = "ОБЩО:";
+            ws.Cell(currentRow, 1).Style.Font.Bold = true;
+
+            var qtyTotalCell = ws.Cell(currentRow, 8);
+            qtyTotalCell.Value = totalQuantity;
+            qtyTotalCell.Style.Font.Bold = true;
+            qtyTotalCell.Style.NumberFormat.Format = "#,##0.000";
+            qtyTotalCell.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Right;
+
+            var sumTotalCell = ws.Cell(currentRow, 10);
+            sumTotalCell.Value = totalRowSum;
+            sumTotalCell.Style.Font.Bold = true;
+            sumTotalCell.Style.NumberFormat.Format = "#,##0.00";
+            sumTotalCell.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Right;
+
+            var footerRange = ws.Range(currentRow, 1, currentRow, headers.Length);
+            footerRange.Style.Border.TopBorder = XLBorderStyleValues.Thin;
+            footerRange.Style.Border.BottomBorder = XLBorderStyleValues.Double;
+            footerRange.Style.Fill.BackgroundColor = XLColor.FromHtml("#E9EDF4");
+
+            // Бордери за цялата таблица
+            var dataTableRange = ws.Range(headerRow, 1, currentRow, headers.Length);
+            dataTableRange.Style.Border.InsideBorder = XLBorderStyleValues.Thin;
+            dataTableRange.Style.Border.InsideBorderColor = XLColor.FromHtml("#E0E0E0");
+            dataTableRange.Style.Border.OutsideBorder = XLBorderStyleValues.Medium;
+            dataTableRange.Style.Border.OutsideBorderColor = XLColor.FromHtml("#1F4E79");
+
+            ws.SheetView.FreezeRows(headerRow);
+            ws.Columns(1, headers.Length).AdjustToContents();
+
+            workbook.SaveAs(filePath);
+        }, ct);
+    }
+
+    public async Task ExportDetailedToCsvAsync(List<DetailedSaleRecord> records, ReportFilter filter, string filePath, CancellationToken ct = default)
+    {
+        var sb = new StringBuilder();
+
+        sb.AppendLine($"# Детайлна справка продажби по терминали и бонове");
+        sb.AppendLine($"# Група:;{filter.GroupName}");
+        sb.AppendLine($"# Период:;{filter.StartDate:dd.MM.yyyy};—;{filter.EndDate:dd.MM.yyyy}");
+        sb.AppendLine($"# Терминал:;{(filter.TerminalId > 0 ? filter.TerminalName : "Всички")}");
+        sb.AppendLine($"# Генерирана:;{DateTime.Now:dd.MM.yyyy HH:mm:ss}");
+        sb.AppendLine();
+
+        sb.AppendLine("Терминал;Бон No;Дата/Час;Тотал бон;Арт.група;Арт.No;Артикул;Количество;Ед.цена;Сума ред");
+
+        decimal totalQuantity = 0m;
+        decimal totalRowSum = 0m;
+
+        foreach (var r in records)
+        {
+            totalQuantity += r.Quantity;
+            totalRowSum += r.RowTotal;
+
+            var cols = new List<string>
+            {
+                $"\"{r.TerminalName.Replace("\"", "\"\"")}\"",
+                r.BonNumber.ToString(),
+                r.SaleDateTime.ToString("dd.MM.yyyy HH:mm:ss"),
+                r.BonTotal.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture),
+                $"\"{r.GroupName.Replace("\"", "\"\"")}\"",
+                r.PluNumber.ToString(),
+                $"\"{r.ArticleName.Replace("\"", "\"\"")}\"",
+                r.Quantity.ToString("0.000", System.Globalization.CultureInfo.InvariantCulture),
+                r.UnitPrice.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture),
+                r.RowTotal.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)
+            };
+
+            sb.AppendLine(string.Join(";", cols));
+        }
+
+        sb.AppendLine($"ОБЩО;;;;;;;{totalQuantity.ToString("0.000", System.Globalization.CultureInfo.InvariantCulture)};;{totalRowSum.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)}");
+
+        await Task.Run(() => File.WriteAllText(filePath, sb.ToString(), new UTF8Encoding(true)), ct);
+    }
+
+    public string CopyDetailedToClipboardFormat(List<DetailedSaleRecord> records)
+    {
+        var sb = new StringBuilder();
+
+        sb.AppendLine("Терминал\tБон No\tДата/Час\tТотал бон\tАрт.група\tАрт.No\tАртикул\tКоличество\tЕд.цена\tСума ред");
+
+        decimal totalQuantity = 0m;
+        decimal totalRowSum = 0m;
+
+        foreach (var r in records)
+        {
+            totalQuantity += r.Quantity;
+            totalRowSum += r.RowTotal;
+
+            var cols = new List<string>
+            {
+                r.TerminalName,
+                r.BonNumber.ToString(),
+                r.SaleDateTime.ToString("dd.MM.yyyy HH:mm:ss"),
+                r.BonTotal.ToString("0.00"),
+                r.GroupName,
+                r.PluNumber.ToString(),
+                r.ArticleName,
+                r.Quantity.ToString("0.000"),
+                r.UnitPrice.ToString("0.00"),
+                r.RowTotal.ToString("0.00")
+            };
+
+            sb.AppendLine(string.Join("\t", cols));
+        }
+
+        sb.AppendLine($"ОБЩО\t\t\t\t\t\t\t{totalQuantity:0.000}\t\t{totalRowSum:0.00}");
+
+        return sb.ToString();
+    }
 }

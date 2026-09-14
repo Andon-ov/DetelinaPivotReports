@@ -11,4 +11,5 @@ public interface IFirebirdService
     Task<List<PlugroupItem>> GetPlugroupsAsync(DatabaseSettings settings, CancellationToken ct = default);
     Task<List<TerminalItem>> GetTerminalsAsync(DatabaseSettings settings, Dictionary<string, string> terminalNames, CancellationToken ct = default);
     Task<List<ArticleSaleRecord>> GetSalesRecordsAsync(DatabaseSettings settings, ReportFilter filter, CancellationToken ct = default);
+    Task<List<DetailedSaleRecord>> GetDetailedSalesRecordsAsync(DatabaseSettings settings, ReportFilter filter, CancellationToken ct = default);
 }

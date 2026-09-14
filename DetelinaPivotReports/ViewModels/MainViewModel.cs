@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Data;
 using System.Diagnostics;
 using System.IO;
@@ -8,6 +9,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Data;
 using System.Windows.Input;
 using DetelinaPivotReports.Models;
 using DetelinaPivotReports.Services;
@@ -21,6 +23,9 @@ public class MainViewModel : ViewModelBase
     private readonly IFirebirdService _firebirdService;
     private readonly IPivotReportService _pivotReportService;
     private readonly IExportService _exportService;
+
+    // Избор на текуща справка (0: Матрична, 1: Детайлна)
+    private int _selectedReportIndex;
 
     // Списъци
     private ObservableCollection<PlugroupItem> _plugroups = new();
@@ -42,18 +47,31 @@ public class MainViewModel : ViewModelBase
     private string _databasePathDisplay = string.Empty;
     private TimeSpan _lastQueryDuration;
 
-    // Резултати
+    // Резултати - Справка 1: Матрица униформи
     private PivotReportResult? _pivotResult;
     private DataTable? _pivotDataTable;
     private DataView? _pivotDataView;
     private bool _hasReportData;
 
-    // KPIs
+    // KPIs - Справка 1
     private decimal _kpiTotalQuantity;
     private int _kpiUniqueArticles;
     private int _kpiActiveDays;
     private string _kpiTopArticle = "—";
     private string _kpiPeakDate = "—";
+
+    // Резултати - Справка 2: Детайлна справка продажби по терминали и бонове
+    private ObservableCollection<DetailedSaleRecord> _detailedRecords = new();
+    private ICollectionView? _detailedDataView;
+    private bool _hasDetailedData;
+    private string _detailedSearchText = string.Empty;
+
+    // KPIs - Справка 2
+    private decimal _detailedKpiTotalQuantity;
+    private decimal _detailedKpiTotalRowSum;
+    private int _detailedKpiUniqueBonsCount;
+    private int _detailedKpiTotalRowsCount;
+    private decimal _detailedKpiTotalBonSum;
 
     // Събитие за уведомяване на View-то за обновяване на колоните в DataGrid
     public event Action<PivotReportResult>? ReportColumnsGenerated;
@@ -186,6 +204,74 @@ public class MainViewModel : ViewModelBase
         set => SetProperty(ref _kpiPeakDate, value);
     }
 
+    // Свойства за Справка 2: Детайлни продажби
+    public int SelectedReportIndex
+    {
+        get => _selectedReportIndex;
+        set => SetProperty(ref _selectedReportIndex, value);
+    }
+
+    public ObservableCollection<DetailedSaleRecord> DetailedRecords
+    {
+        get => _detailedRecords;
+        set => SetProperty(ref _detailedRecords, value);
+    }
+
+    public ICollectionView? DetailedDataView
+    {
+        get => _detailedDataView;
+        set => SetProperty(ref _detailedDataView, value);
+    }
+
+    public bool HasDetailedData
+    {
+        get => _hasDetailedData;
+        set => SetProperty(ref _hasDetailedData, value);
+    }
+
+    public string DetailedSearchText
+    {
+        get => _detailedSearchText;
+        set
+        {
+            if (SetProperty(ref _detailedSearchText, value))
+            {
+                _detailedDataView?.Refresh();
+                UpdateDetailedKpis();
+            }
+        }
+    }
+
+    public decimal DetailedKpiTotalQuantity
+    {
+        get => _detailedKpiTotalQuantity;
+        set => SetProperty(ref _detailedKpiTotalQuantity, value);
+    }
+
+    public decimal DetailedKpiTotalRowSum
+    {
+        get => _detailedKpiTotalRowSum;
+        set => SetProperty(ref _detailedKpiTotalRowSum, value);
+    }
+
+    public int DetailedKpiUniqueBonsCount
+    {
+        get => _detailedKpiUniqueBonsCount;
+        set => SetProperty(ref _detailedKpiUniqueBonsCount, value);
+    }
+
+    public int DetailedKpiTotalRowsCount
+    {
+        get => _detailedKpiTotalRowsCount;
+        set => SetProperty(ref _detailedKpiTotalRowsCount, value);
+    }
+
+    public decimal DetailedKpiTotalBonSum
+    {
+        get => _detailedKpiTotalBonSum;
+        set => SetProperty(ref _detailedKpiTotalBonSum, value);
+    }
+
     #endregion
 
     #region Commands
@@ -198,6 +284,13 @@ public class MainViewModel : ViewModelBase
     public ICommand OpenSettingsCommand { get; }
     public ICommand RefreshMetadataCommand { get; }
     public ICommand ClearSearchCommand { get; }
+
+    // Команди за Справка 2: Детайлни продажби
+    public ICommand LoadDetailedReportCommand { get; }
+    public ICommand ExportDetailedExcelCommand { get; }
+    public ICommand ExportDetailedCsvCommand { get; }
+    public ICommand CopyDetailedClipboardCommand { get; }
+    public ICommand ClearDetailedSearchCommand { get; }
 
     #endregion
 
@@ -218,7 +311,7 @@ public class MainViewModel : ViewModelBase
         // Начален период
         ApplyPeriodPreset(_configService.DefaultPeriodPreset);
 
-        // Инициализация на команди
+        // Инициализация на команди - Справка 1
         LoadReportCommand = new RelayCommand(async () => await LoadReportAsync(), () => !IsLoading);
         QuickPeriodCommand = new RelayCommand(param => ApplyPeriodPreset(param?.ToString() ?? "Today"));
         ExportExcelCommand = new RelayCommand(async () => await ExportToExcelAsync(), () => HasReportData && !IsLoading);
@@ -227,6 +320,13 @@ public class MainViewModel : ViewModelBase
         OpenSettingsCommand = new RelayCommand(OpenSettings);
         RefreshMetadataCommand = new RelayCommand(async () => await InitializeDatabaseAsync(), () => !IsLoading);
         ClearSearchCommand = new RelayCommand(() => SearchText = string.Empty);
+
+        // Инициализация на команди - Справка 2
+        LoadDetailedReportCommand = new RelayCommand(async () => await LoadDetailedReportAsync(), () => !IsLoading);
+        ExportDetailedExcelCommand = new RelayCommand(async () => await ExportDetailedToExcelAsync(), () => HasDetailedData && !IsLoading);
+        ExportDetailedCsvCommand = new RelayCommand(async () => await ExportDetailedToCsvAsync(), () => HasDetailedData && !IsLoading);
+        CopyDetailedClipboardCommand = new RelayCommand(CopyDetailedClipboard, () => HasDetailedData && !IsLoading);
+        ClearDetailedSearchCommand = new RelayCommand(() => DetailedSearchText = string.Empty);
     }
 
     public async Task InitializeDatabaseAsync()
@@ -486,6 +586,207 @@ public class MainViewModel : ViewModelBase
             string tsv = _exportService.CopyToClipboardFormat(_pivotResult);
             Clipboard.SetText(tsv);
             StatusMessage = "Таблицата е копирана в клипборда! Можете да я поставите директно в Excel.";
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Грешка при копиране: {ex.Message}", "Грешка", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    public async Task LoadDetailedReportAsync()
+    {
+        if (StartDate > EndDate)
+        {
+            MessageBox.Show("Началната дата не може да бъде след крайната дата!", "Внимание", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        IsLoading = true;
+        StatusMessage = "Извличане на детайлни продажби от базата данни...";
+        var sw = Stopwatch.StartNew();
+
+        try
+        {
+            var filter = new ReportFilter
+            {
+                GroupId = SelectedPlugroup?.Id ?? 0,
+                GroupName = SelectedPlugroup?.Name ?? "Всички групи",
+                IncludeSubgroups = IncludeSubgroups,
+                TerminalId = SelectedTerminal?.Id ?? 0,
+                TerminalName = SelectedTerminal?.DisplayName ?? "Всички терминали",
+                StartDate = StartDate,
+                EndDate = EndDate
+            };
+
+            if (filter.GroupId > 0 && filter.IncludeSubgroups)
+            {
+                filter.GroupIds = _pivotReportService.GetGroupAndDescendantIds(filter.GroupId, Plugroups);
+            }
+
+            var records = await _firebirdService.GetDetailedSalesRecordsAsync(_configService.DatabaseSettings, filter);
+            DetailedRecords = new ObservableCollection<DetailedSaleRecord>(records);
+
+            var view = CollectionViewSource.GetDefaultView(DetailedRecords);
+            view.Filter = FilterDetailedRecord;
+            DetailedDataView = view;
+
+            HasDetailedData = records.Count > 0;
+            UpdateDetailedKpis();
+            sw.Stop();
+
+            StatusMessage = $"Детайлната справка е генерирана за {sw.Elapsed.TotalSeconds:F2} сек. Намерени {records.Count:N0} записа, {DetailedKpiUniqueBonsCount:N0} бона, общо {DetailedKpiTotalQuantity:#,##0.000} бр., сума {DetailedKpiTotalRowSum:#,##0.00} лв.";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Грешка при справката: {ex.Message}";
+            MessageBox.Show($"Възникна грешка при извличане на данните:\n\n{ex.Message}", "Грешка", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private bool FilterDetailedRecord(object item)
+    {
+        if (item is not DetailedSaleRecord record) return false;
+        if (string.IsNullOrWhiteSpace(DetailedSearchText)) return true;
+
+        string term = DetailedSearchText.Trim();
+        return (record.ArticleName != null && record.ArticleName.IndexOf(term, StringComparison.OrdinalIgnoreCase) >= 0) ||
+               record.PluNumber.ToString().Contains(term) ||
+               record.BonNumber.ToString().Contains(term) ||
+               (record.GroupName != null && record.GroupName.IndexOf(term, StringComparison.OrdinalIgnoreCase) >= 0) ||
+               (record.TerminalName != null && record.TerminalName.IndexOf(term, StringComparison.OrdinalIgnoreCase) >= 0);
+    }
+
+    private void UpdateDetailedKpis()
+    {
+        if (DetailedDataView == null)
+        {
+            DetailedKpiTotalQuantity = 0m;
+            DetailedKpiTotalRowSum = 0m;
+            DetailedKpiUniqueBonsCount = 0;
+            DetailedKpiTotalRowsCount = 0;
+            DetailedKpiTotalBonSum = 0m;
+            return;
+        }
+
+        var visible = DetailedDataView.Cast<DetailedSaleRecord>().ToList();
+        DetailedKpiTotalQuantity = visible.Sum(r => r.Quantity);
+        DetailedKpiTotalRowSum = visible.Sum(r => r.RowTotal);
+        DetailedKpiTotalRowsCount = visible.Count;
+        DetailedKpiUniqueBonsCount = visible.Select(r => (r.TerminalId, r.BonNumber)).Distinct().Count();
+        DetailedKpiTotalBonSum = visible.GroupBy(r => (r.TerminalId, r.BonNumber, r.SaleDateTime.Date)).Sum(g => g.First().BonTotal);
+    }
+
+    private async Task ExportDetailedToExcelAsync()
+    {
+        if (!HasDetailedData || DetailedDataView == null) return;
+        var records = DetailedDataView.Cast<DetailedSaleRecord>().ToList();
+        if (records.Count == 0) return;
+
+        var filter = new ReportFilter
+        {
+            GroupId = SelectedPlugroup?.Id ?? 0,
+            GroupName = SelectedPlugroup?.Name ?? "Всички групи",
+            TerminalId = SelectedTerminal?.Id ?? 0,
+            TerminalName = SelectedTerminal?.DisplayName ?? "Всички терминали",
+            StartDate = StartDate,
+            EndDate = EndDate
+        };
+
+        var sfd = new SaveFileDialog
+        {
+            Title = "Експорт на детайлна справка в Microsoft Excel",
+            Filter = "Excel таблица (*.xlsx)|*.xlsx",
+            FileName = $"Детайлни_продажби_{filter.GroupName.Replace(" ", "_")}_{DateTime.Now:yyyyMMdd_HHmm}.xlsx"
+        };
+
+        if (sfd.ShowDialog() == true)
+        {
+            try
+            {
+                IsLoading = true;
+                StatusMessage = "Експортиране на детайлната справка в Excel...";
+                await _exportService.ExportDetailedToExcelAsync(records, filter, sfd.FileName);
+                StatusMessage = $"Успешен експорт в {Path.GetFileName(sfd.FileName)}";
+
+                var res = MessageBox.Show($"Справката беше записана успешно:\n{sfd.FileName}\n\nЖелаете ли да я отворите веднага?",
+                    "Успешен експорт", MessageBoxButton.YesNo, MessageBoxImage.Information);
+
+                if (res == MessageBoxResult.Yes)
+                {
+                    Process.Start(new ProcessStartInfo(sfd.FileName) { UseShellExecute = true });
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Грешка при експорт в Excel:\n{ex.Message}", "Грешка", MessageBoxButton.OK, MessageBoxImage.Error);
+                StatusMessage = "Грешка при експорт в Excel";
+            }
+            finally
+            {
+                IsLoading = false;
+            }
+        }
+    }
+
+    private async Task ExportDetailedToCsvAsync()
+    {
+        if (!HasDetailedData || DetailedDataView == null) return;
+        var records = DetailedDataView.Cast<DetailedSaleRecord>().ToList();
+        if (records.Count == 0) return;
+
+        var filter = new ReportFilter
+        {
+            GroupId = SelectedPlugroup?.Id ?? 0,
+            GroupName = SelectedPlugroup?.Name ?? "Всички групи",
+            TerminalId = SelectedTerminal?.Id ?? 0,
+            TerminalName = SelectedTerminal?.DisplayName ?? "Всички терминали",
+            StartDate = StartDate,
+            EndDate = EndDate
+        };
+
+        var sfd = new SaveFileDialog
+        {
+            Title = "Експорт на детайлна справка в CSV файл",
+            Filter = "CSV файл (*.csv)|*.csv",
+            FileName = $"Детайлни_продажби_{filter.GroupName.Replace(" ", "_")}_{DateTime.Now:yyyyMMdd_HHmm}.csv"
+        };
+
+        if (sfd.ShowDialog() == true)
+        {
+            try
+            {
+                IsLoading = true;
+                StatusMessage = "Експортиране на детайлната справка в CSV...";
+                await _exportService.ExportDetailedToCsvAsync(records, filter, sfd.FileName);
+                StatusMessage = $"Успешен експорт в {Path.GetFileName(sfd.FileName)}";
+                MessageBox.Show($"CSV файлът е записан успешно:\n{sfd.FileName}", "Успешен експорт", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Грешка при експорт в CSV:\n{ex.Message}", "Грешка", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            finally
+            {
+                IsLoading = false;
+            }
+        }
+    }
+
+    private void CopyDetailedClipboard()
+    {
+        if (!HasDetailedData || DetailedDataView == null) return;
+        var records = DetailedDataView.Cast<DetailedSaleRecord>().ToList();
+        if (records.Count == 0) return;
+
+        try
+        {
+            string tsv = _exportService.CopyDetailedToClipboardFormat(records);
+            Clipboard.SetText(tsv);
+            StatusMessage = "Детайлните данни са копирани в клипборда! Можете да ги поставите в Excel.";
         }
         catch (Exception ex)
         {
