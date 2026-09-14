@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -94,5 +95,18 @@ public partial class MainWindow : Window
         };
 
         PivotGrid.Columns.Add(totalCol);
+    }
+
+    private void DetailedGrid_Sorting(object sender, DataGridSortingEventArgs e)
+    {
+        // Изчакваме WPF сортирането да завърши и преизчисляваме групирането по бонове на видимите редове
+        Dispatcher.BeginInvoke(new Action(() =>
+        {
+            if (_viewModel.DetailedDataView != null)
+            {
+                var visible = _viewModel.DetailedDataView.Cast<DetailedSaleRecord>().ToList();
+                MainViewModel.ProcessReceiptGrouping(visible);
+            }
+        }), System.Windows.Threading.DispatcherPriority.Background);
     }
 }

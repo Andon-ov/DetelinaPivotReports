@@ -36,6 +36,8 @@ public class MainViewModel : ViewModelBase
     // Филтри
     private DateTime _startDate = DateTime.Today;
     private DateTime _endDate = DateTime.Today;
+    private string _startTime = "00:00";
+    private string _endTime = "23:59";
     private bool _includeSubgroups = true;
     private bool _hideEmptyDays = false;
     private string _searchText = string.Empty;
@@ -105,13 +107,66 @@ public class MainViewModel : ViewModelBase
     public DateTime StartDate
     {
         get => _startDate;
-        set => SetProperty(ref _startDate, value);
+        set
+        {
+            if (SetProperty(ref _startDate, value))
+            {
+                OnPropertyChanged(nameof(FormattedPeriodDisplay));
+            }
+        }
     }
 
     public DateTime EndDate
     {
         get => _endDate;
-        set => SetProperty(ref _endDate, value);
+        set
+        {
+            if (SetProperty(ref _endDate, value))
+            {
+                OnPropertyChanged(nameof(FormattedPeriodDisplay));
+            }
+        }
+    }
+
+    public string StartTime
+    {
+        get => _startTime;
+        set
+        {
+            if (SetProperty(ref _startTime, value))
+            {
+                OnPropertyChanged(nameof(FormattedPeriodDisplay));
+            }
+        }
+    }
+
+    public string EndTime
+    {
+        get => _endTime;
+        set
+        {
+            if (SetProperty(ref _endTime, value))
+            {
+                OnPropertyChanged(nameof(FormattedPeriodDisplay));
+            }
+        }
+    }
+
+    /// <summary>
+    /// Текстово представяне на избрания времеви интервал за показване в UI и експорт.
+    /// </summary>
+    public string FormattedPeriodDisplay
+    {
+        get
+        {
+            bool isFullDay = (string.IsNullOrWhiteSpace(StartTime) || StartTime == "00:00" || StartTime == "00:00:00") &&
+                             (string.IsNullOrWhiteSpace(EndTime) || EndTime == "23:59" || EndTime == "23:59:59");
+            if (isFullDay)
+            {
+                return $"{StartDate:dd.MM.yyyy} — {EndDate:dd.MM.yyyy}";
+            }
+            return $"{StartDate:dd.MM.yyyy} {StartTime} — {EndDate:dd.MM.yyyy} {EndTime}";
+        }
     }
 
     public bool IncludeSubgroups
@@ -237,6 +292,8 @@ public class MainViewModel : ViewModelBase
             if (SetProperty(ref _detailedSearchText, value))
             {
                 _detailedDataView?.Refresh();
+                var visible = _detailedDataView?.Cast<DetailedSaleRecord>().ToList() ?? new List<DetailedSaleRecord>();
+                ProcessReceiptGrouping(visible);
                 UpdateDetailedKpis();
             }
         }
@@ -395,6 +452,8 @@ public class MainViewModel : ViewModelBase
                 TerminalName = SelectedTerminal?.DisplayName ?? "Всички терминали",
                 StartDate = StartDate,
                 EndDate = EndDate,
+                StartTime = ParseTime(StartTime, new TimeSpan(0, 0, 0)),
+                EndTime = ParseTime(EndTime, new TimeSpan(23, 59, 59)),
                 HideEmptyDays = HideEmptyDays,
                 SearchText = SearchText
             };
@@ -449,6 +508,8 @@ public class MainViewModel : ViewModelBase
     public void ApplyPeriodPreset(string preset)
     {
         DateTime today = DateTime.Today;
+        StartTime = "00:00";
+        EndTime = "23:59";
 
         switch (preset)
         {
@@ -615,7 +676,9 @@ public class MainViewModel : ViewModelBase
                 TerminalId = SelectedTerminal?.Id ?? 0,
                 TerminalName = SelectedTerminal?.DisplayName ?? "Всички терминали",
                 StartDate = StartDate,
-                EndDate = EndDate
+                EndDate = EndDate,
+                StartTime = ParseTime(StartTime, new TimeSpan(0, 0, 0)),
+                EndTime = ParseTime(EndTime, new TimeSpan(23, 59, 59))
             };
 
             if (filter.GroupId > 0 && filter.IncludeSubgroups)
@@ -624,6 +687,7 @@ public class MainViewModel : ViewModelBase
             }
 
             var records = await _firebirdService.GetDetailedSalesRecordsAsync(_configService.DatabaseSettings, filter);
+            ProcessReceiptGrouping(records);
             DetailedRecords = new ObservableCollection<DetailedSaleRecord>(records);
 
             var view = CollectionViewSource.GetDefaultView(DetailedRecords);
@@ -680,6 +744,49 @@ public class MainViewModel : ViewModelBase
         DetailedKpiTotalBonSum = visible.GroupBy(r => (r.TerminalId, r.BonNumber, r.SaleDateTime.Date)).Sum(g => g.First().BonTotal);
     }
 
+    /// <summary>
+    /// Изчислява флаговете за скриване на повторения и зебра оцветяване по цели бонове.
+    /// </summary>
+    public static void ProcessReceiptGrouping(IList<DetailedSaleRecord> records)
+    {
+        if (records == null || records.Count == 0) return;
+
+        string? currentReceiptKey = null;
+        bool isAlternate = false;
+
+        for (int i = 0; i < records.Count; i++)
+        {
+            var rec = records[i];
+            string key = rec.ReceiptKey;
+
+            if (key != currentReceiptKey)
+            {
+                // Нов бон - превключваме фона
+                currentReceiptKey = key;
+                isAlternate = !isAlternate;
+                rec.IsFirstInReceipt = true;
+            }
+            else
+            {
+                // Пореден ред от същия бон - скриваме повтарящите се полета
+                rec.IsFirstInReceipt = false;
+            }
+
+            rec.IsAlternateReceiptGroup = isAlternate;
+
+            // Тънка разделителна линия само на последния ред от бона
+            bool isLast = (i == records.Count - 1) || (records[i + 1].ReceiptKey != key);
+            rec.IsLastInReceipt = isLast;
+        }
+    }
+
+    private static TimeSpan ParseTime(string timeStr, TimeSpan fallback)
+    {
+        if (TimeSpan.TryParse(timeStr, out var ts))
+            return ts;
+        return fallback;
+    }
+
     private async Task ExportDetailedToExcelAsync()
     {
         if (!HasDetailedData || DetailedDataView == null) return;
@@ -693,7 +800,9 @@ public class MainViewModel : ViewModelBase
             TerminalId = SelectedTerminal?.Id ?? 0,
             TerminalName = SelectedTerminal?.DisplayName ?? "Всички терминали",
             StartDate = StartDate,
-            EndDate = EndDate
+            EndDate = EndDate,
+            StartTime = ParseTime(StartTime, new TimeSpan(0, 0, 0)),
+            EndTime = ParseTime(EndTime, new TimeSpan(23, 59, 59))
         };
 
         var sfd = new SaveFileDialog
@@ -745,7 +854,9 @@ public class MainViewModel : ViewModelBase
             TerminalId = SelectedTerminal?.Id ?? 0,
             TerminalName = SelectedTerminal?.DisplayName ?? "Всички терминали",
             StartDate = StartDate,
-            EndDate = EndDate
+            EndDate = EndDate,
+            StartTime = ParseTime(StartTime, new TimeSpan(0, 0, 0)),
+            EndTime = ParseTime(EndTime, new TimeSpan(23, 59, 59))
         };
 
         var sfd = new SaveFileDialog

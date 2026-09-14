@@ -264,7 +264,10 @@ public class ExportService : IExportService
             string termInfo = filter.TerminalId > 0 
                 ? $"Терминал: {filter.TerminalName}" 
                 : "Всички терминали";
-            ws.Cell("A3").Value = $"Период: {filter.StartDate:dd.MM.yyyy} — {filter.EndDate:dd.MM.yyyy}  |  {termInfo}";
+            string periodDisplay = filter.StartTime == TimeSpan.Zero && filter.EndTime >= new TimeSpan(23, 59, 0)
+                ? $"{filter.StartDate:dd.MM.yyyy} — {filter.EndDate:dd.MM.yyyy}"
+                : $"{filter.StartDate:dd.MM.yyyy} {filter.StartTime:hh\\:mm} — {filter.EndDate:dd.MM.yyyy} {filter.EndTime:hh\\:mm}";
+            ws.Cell("A3").Value = $"Период: {periodDisplay}  |  {termInfo}";
             ws.Cell("A4").Value = $"Генерирана на: {DateTime.Now:dd.MM.yyyy HH:mm:ss}";
             ws.Cell("A4").Style.Font.FontColor = XLColor.Gray;
 
@@ -306,26 +309,32 @@ public class ExportService : IExportService
                 totalQuantity += r.Quantity;
                 totalRowSum += r.RowTotal;
 
-                // 1. Терминал
-                ws.Cell(currentRow, 1).Value = r.TerminalName;
+                // 1. Терминал (само на 1-вия ред от бона)
+                ws.Cell(currentRow, 1).Value = r.IsFirstInReceipt ? r.TerminalName : string.Empty;
                 ws.Cell(currentRow, 1).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
 
-                // 2. Бон No
-                ws.Cell(currentRow, 2).Value = r.BonNumber;
+                // 2. Бон No (само на 1-вия ред от бона)
+                if (r.IsFirstInReceipt)
+                {
+                    ws.Cell(currentRow, 2).Value = r.BonNumber;
+                }
                 ws.Cell(currentRow, 2).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
 
-                // 3. Дата/Час
-                ws.Cell(currentRow, 3).Value = r.SaleDateTime.ToString("dd.MM.yyyy HH:mm:ss");
+                // 3. Дата/Час (само на 1-вия ред от бона)
+                ws.Cell(currentRow, 3).Value = r.IsFirstInReceipt ? r.SaleDateTime.ToString("dd.MM.yyyy HH:mm:ss") : string.Empty;
                 ws.Cell(currentRow, 3).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
 
-                // 4. Тотал бон
+                // 4. Тотал бон (само на 1-вия ред от бона)
                 var cellBonTot = ws.Cell(currentRow, 4);
-                cellBonTot.Value = r.BonTotal;
-                cellBonTot.Style.NumberFormat.Format = "#,##0.00";
+                if (r.IsFirstInReceipt)
+                {
+                    cellBonTot.Value = r.BonTotal;
+                    cellBonTot.Style.NumberFormat.Format = "#,##0.00";
+                }
                 cellBonTot.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Right;
 
-                // 5. Арт.група
-                ws.Cell(currentRow, 5).Value = r.GroupName;
+                // 5. Арт.група (само на 1-вия ред от бона)
+                ws.Cell(currentRow, 5).Value = r.IsFirstInReceipt ? r.GroupName : string.Empty;
                 ws.Cell(currentRow, 5).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Left;
 
                 // 6. Арт.No
@@ -353,6 +362,19 @@ public class ExportService : IExportService
                 cellRowSum.Value = r.RowTotal;
                 cellRowSum.Style.NumberFormat.Format = "#,##0.00";
                 cellRowSum.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Right;
+
+                // Зебра оцветяване по цял бон
+                if (r.IsAlternateReceiptGroup)
+                {
+                    ws.Range(currentRow, 1, currentRow, headers.Length).Style.Fill.BackgroundColor = XLColor.FromHtml("#F4F7FB");
+                }
+
+                // Долна разделителна линия в края на всеки бон
+                if (r.IsLastInReceipt)
+                {
+                    ws.Range(currentRow, 1, currentRow, headers.Length).Style.Border.BottomBorder = XLBorderStyleValues.Thin;
+                    ws.Range(currentRow, 1, currentRow, headers.Length).Style.Border.BottomBorderColor = XLColor.FromHtml("#CBD5E0");
+                }
 
                 currentRow++;
             }
@@ -396,9 +418,13 @@ public class ExportService : IExportService
     {
         var sb = new StringBuilder();
 
+        string periodDisplay = filter.StartTime == TimeSpan.Zero && filter.EndTime >= new TimeSpan(23, 59, 0)
+            ? $"{filter.StartDate:dd.MM.yyyy} — {filter.EndDate:dd.MM.yyyy}"
+            : $"{filter.StartDate:dd.MM.yyyy} {filter.StartTime:hh\\:mm} — {filter.EndDate:dd.MM.yyyy} {filter.EndTime:hh\\:mm}";
+
         sb.AppendLine($"# Детайлна справка продажби по терминали и бонове");
         sb.AppendLine($"# Група:;{filter.GroupName}");
-        sb.AppendLine($"# Период:;{filter.StartDate:dd.MM.yyyy};—;{filter.EndDate:dd.MM.yyyy}");
+        sb.AppendLine($"# Период:;{periodDisplay}");
         sb.AppendLine($"# Терминал:;{(filter.TerminalId > 0 ? filter.TerminalName : "Всички")}");
         sb.AppendLine($"# Генерирана:;{DateTime.Now:dd.MM.yyyy HH:mm:ss}");
         sb.AppendLine();
@@ -415,11 +441,11 @@ public class ExportService : IExportService
 
             var cols = new List<string>
             {
-                $"\"{r.TerminalName.Replace("\"", "\"\"")}\"",
-                r.BonNumber.ToString(),
-                r.SaleDateTime.ToString("dd.MM.yyyy HH:mm:ss"),
-                r.BonTotal.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture),
-                $"\"{r.GroupName.Replace("\"", "\"\"")}\"",
+                $"\"{(r.IsFirstInReceipt ? r.TerminalName.Replace("\"", "\"\"") : string.Empty)}\"",
+                r.IsFirstInReceipt ? r.BonNumber.ToString() : string.Empty,
+                r.IsFirstInReceipt ? r.SaleDateTime.ToString("dd.MM.yyyy HH:mm:ss") : string.Empty,
+                r.IsFirstInReceipt ? r.BonTotal.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) : string.Empty,
+                $"\"{(r.IsFirstInReceipt ? r.GroupName.Replace("\"", "\"\"") : string.Empty)}\"",
                 r.PluNumber.ToString(),
                 $"\"{r.ArticleName.Replace("\"", "\"\"")}\"",
                 r.Quantity.ToString("0.000", System.Globalization.CultureInfo.InvariantCulture),
@@ -451,11 +477,11 @@ public class ExportService : IExportService
 
             var cols = new List<string>
             {
-                r.TerminalName,
-                r.BonNumber.ToString(),
-                r.SaleDateTime.ToString("dd.MM.yyyy HH:mm:ss"),
-                r.BonTotal.ToString("0.00"),
-                r.GroupName,
+                r.DisplayTerminal,
+                r.DisplayBonNumber,
+                r.DisplaySaleDateTime,
+                r.DisplayBonTotal,
+                r.DisplayGroupName,
                 r.PluNumber.ToString(),
                 r.ArticleName,
                 r.Quantity.ToString("0.000"),

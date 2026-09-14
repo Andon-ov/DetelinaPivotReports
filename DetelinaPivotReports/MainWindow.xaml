@@ -548,7 +548,7 @@
                                 </StackPanel>
                             </Grid>
 
-                            <!-- Row 2: Период (Бързи бутони + DatePickers) -->
+                            <!-- Row 2: Период (Бързи бутони + DatePickers + Времеви интервал) -->
                             <Grid Grid.Row="2">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto"/>
@@ -585,13 +585,26 @@
                                             Height="30" Padding="10,0" Margin="0,0,6,0" FontSize="11"/>
                                 </StackPanel>
 
-                                <!-- Ръчен избор на дати (От дата - До дата) -->
+                                <!-- Бадж с активен времеви диапазон -->
+                                <Border Grid.Column="1" Background="#EBF8FF" BorderBrush="#BEE3F8" BorderThickness="1" CornerRadius="12" 
+                                        Padding="10,4" Margin="10,0" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="ClockOutline" Foreground="#2B6CB0" Width="16" Height="16" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                        <TextBlock Text="{Binding FormattedPeriodDisplay}" FontSize="12" FontWeight="SemiBold" Foreground="#2B6CB0" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Ръчен избор на дати и часове (От дата/час - До дата/час) -->
                                 <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
                                     <TextBlock Text="От:" FontSize="12" FontWeight="SemiBold" Foreground="#4A5568" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                                    <DatePicker SelectedDate="{Binding StartDate}" Width="130" Height="32" Margin="0,0,16,0" FontSize="12"/>
+                                    <DatePicker SelectedDate="{Binding StartDate, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="115" Height="32" Margin="0,0,4,0" FontSize="12"/>
+                                    <TextBox Text="{Binding StartTime, UpdateSourceTrigger=PropertyChanged}" Width="50" Height="32" VerticalContentAlignment="Center" HorizontalContentAlignment="Center"
+                                             ToolTip="Начален час (ЧЧ:ММ)" FontSize="12" FontWeight="SemiBold" Foreground="#2B6CB0" Margin="0,0,14,0"/>
 
                                     <TextBlock Text="До:" FontSize="12" FontWeight="SemiBold" Foreground="#4A5568" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                                    <DatePicker SelectedDate="{Binding EndDate}" Width="130" Height="32" FontSize="12"/>
+                                    <DatePicker SelectedDate="{Binding EndDate, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="115" Height="32" Margin="0,0,4,0" FontSize="12"/>
+                                    <TextBox Text="{Binding EndTime, UpdateSourceTrigger=PropertyChanged}" Width="50" Height="32" VerticalContentAlignment="Center" HorizontalContentAlignment="Center"
+                                             ToolTip="Краен час (ЧЧ:ММ)" FontSize="12" FontWeight="SemiBold" Foreground="#2B6CB0"/>
                                 </StackPanel>
                             </Grid>
 
@@ -747,6 +760,7 @@
                             <!-- DataGrid с детайлните записи -->
                             <DataGrid x:Name="DetailedGrid"
                                       ItemsSource="{Binding DetailedDataView}"
+                                      Sorting="DetailedGrid_Sorting"
                                       AutoGenerateColumns="False"
                                       CanUserAddRows="False"
                                       CanUserDeleteRows="False"
@@ -758,7 +772,7 @@
                                       ColumnHeaderHeight="36"
                                       BorderThickness="0"
                                       Background="Transparent"
-                                      AlternatingRowBackground="#F8FAFC"
+                                      AlternatingRowBackground="{x:Null}"
                                       HeadersVisibility="Column"
                                       EnableRowVirtualization="True"
                                       EnableColumnVirtualization="True"
@@ -766,6 +780,23 @@
                                       VirtualizingPanel.VirtualizationMode="Recycling"
                                       SelectionMode="Extended"
                                       SelectionUnit="FullRow">
+
+                                <DataGrid.RowStyle>
+                                    <Style TargetType="DataGridRow" BasedOn="{StaticResource MaterialDesignDataGridRow}">
+                                        <Setter Property="Background" Value="#FFFFFF"/>
+                                        <Setter Property="BorderThickness" Value="0,0,0,1"/>
+                                        <Setter Property="BorderBrush" Value="#EDF2F7"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsAlternateReceiptGroup}" Value="True">
+                                                <Setter Property="Background" Value="#F4F7FB"/>
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding IsLastInReceipt}" Value="True">
+                                                <Setter Property="BorderThickness" Value="0,0,0,2"/>
+                                                <Setter Property="BorderBrush" Value="#A0AEC0"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </DataGrid.RowStyle>
 
                                 <DataGrid.ColumnHeaderStyle>
                                     <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource MaterialDesignDataGridColumnHeader}">
@@ -780,8 +811,8 @@
                                 </DataGrid.ColumnHeaderStyle>
 
                                 <DataGrid.Columns>
-                                    <!-- 1. Терминал -->
-                                    <DataGridTextColumn Header="Терминал" Binding="{Binding TerminalName}" Width="140">
+                                    <!-- 1. Терминал (показва се само на 1-вия ред от бона) -->
+                                    <DataGridTextColumn Header="Терминал" Binding="{Binding DisplayTerminal}" SortMemberPath="TerminalName" Width="140">
                                         <DataGridTextColumn.ElementStyle>
                                             <Style TargetType="TextBlock">
                                                 <Setter Property="TextAlignment" Value="Center"/>
@@ -792,8 +823,8 @@
                                         </DataGridTextColumn.ElementStyle>
                                     </DataGridTextColumn>
 
-                                    <!-- 2. Бон No -->
-                                    <DataGridTextColumn Header="Бон No" Binding="{Binding BonNumber}" Width="95">
+                                    <!-- 2. Бон No (показва се само на 1-вия ред от бона) -->
+                                    <DataGridTextColumn Header="Бон No" Binding="{Binding DisplayBonNumber}" SortMemberPath="BonNumber" Width="95">
                                         <DataGridTextColumn.ElementStyle>
                                             <Style TargetType="TextBlock">
                                                 <Setter Property="TextAlignment" Value="Center"/>
@@ -804,8 +835,8 @@
                                         </DataGridTextColumn.ElementStyle>
                                     </DataGridTextColumn>
 
-                                    <!-- 3. Дата/Час -->
-                                    <DataGridTextColumn Header="Дата/Час" Binding="{Binding SaleDateTime, StringFormat={}{0:dd.MM.yyyy HH:mm:ss}}" Width="145">
+                                    <!-- 3. Дата/Час (показва се само на 1-вия ред от бона) -->
+                                    <DataGridTextColumn Header="Дата/Час" Binding="{Binding DisplaySaleDateTime}" SortMemberPath="SaleDateTime" Width="145">
                                         <DataGridTextColumn.ElementStyle>
                                             <Style TargetType="TextBlock">
                                                 <Setter Property="TextAlignment" Value="Center"/>
@@ -815,21 +846,21 @@
                                         </DataGridTextColumn.ElementStyle>
                                     </DataGridTextColumn>
 
-                                    <!-- 4. Тотал бон (Формат: 0.00) -->
-                                    <DataGridTextColumn Header="Тотал бон" Binding="{Binding BonTotal, StringFormat={}{0:#,##0.00}}" Width="105">
+                                    <!-- 4. Тотал бон (показва се само на 1-вия ред от бона, Формат: 0.00) -->
+                                    <DataGridTextColumn Header="Тотал бон" Binding="{Binding DisplayBonTotal}" SortMemberPath="BonTotal" Width="105">
                                         <DataGridTextColumn.ElementStyle>
                                             <Style TargetType="TextBlock">
                                                 <Setter Property="TextAlignment" Value="Right"/>
                                                 <Setter Property="VerticalAlignment" Value="Center"/>
-                                                <Setter Property="FontWeight" Value="SemiBold"/>
+                                                <Setter Property="FontWeight" Value="Bold"/>
                                                 <Setter Property="Margin" Value="0,0,8,0"/>
                                                 <Setter Property="Foreground" Value="#2D3748"/>
                                             </Style>
                                         </DataGridTextColumn.ElementStyle>
                                     </DataGridTextColumn>
 
-                                    <!-- 5. Арт.група -->
-                                    <DataGridTextColumn Header="Арт.група" Binding="{Binding GroupName}" Width="150">
+                                    <!-- 5. Арт.група (показва се само на 1-вия ред от бона) -->
+                                    <DataGridTextColumn Header="Арт.група" Binding="{Binding DisplayGroupName}" SortMemberPath="GroupName" Width="150">
                                         <DataGridTextColumn.ElementStyle>
                                             <Style TargetType="TextBlock">
                                                 <Setter Property="TextAlignment" Value="Left"/>
@@ -841,7 +872,7 @@
                                     </DataGridTextColumn>
 
                                     <!-- 6. Арт.No -->
-                                    <DataGridTextColumn Header="Арт.No" Binding="{Binding PluNumber}" Width="85">
+                                    <DataGridTextColumn Header="Арт.No" Binding="{Binding PluNumber}" SortMemberPath="PluNumber" Width="85">
                                         <DataGridTextColumn.ElementStyle>
                                             <Style TargetType="TextBlock">
                                                 <Setter Property="TextAlignment" Value="Center"/>
@@ -852,7 +883,7 @@
                                     </DataGridTextColumn>
 
                                     <!-- 7. Артикул -->
-                                    <DataGridTextColumn Header="Артикул" Binding="{Binding ArticleName}" Width="*" MinWidth="180">
+                                    <DataGridTextColumn Header="Артикул" Binding="{Binding ArticleName}" SortMemberPath="ArticleName" Width="*" MinWidth="180">
                                         <DataGridTextColumn.ElementStyle>
                                             <Style TargetType="TextBlock">
                                                 <Setter Property="TextAlignment" Value="Left"/>
@@ -865,7 +896,7 @@
                                     </DataGridTextColumn>
 
                                     <!-- 8. Количество (Формат: 0.000) -->
-                                    <DataGridTextColumn Header="Количество" Binding="{Binding Quantity, StringFormat={}{0:#,##0.000}}" Width="105">
+                                    <DataGridTextColumn Header="Количество" Binding="{Binding Quantity, StringFormat={}{0:#,##0.000}}" SortMemberPath="Quantity" Width="105">
                                         <DataGridTextColumn.ElementStyle>
                                             <Style TargetType="TextBlock">
                                                 <Setter Property="TextAlignment" Value="Right"/>
@@ -878,7 +909,7 @@
                                     </DataGridTextColumn>
 
                                     <!-- 9. Ед.цена (Формат: 0.00) -->
-                                    <DataGridTextColumn Header="Ед.цена" Binding="{Binding UnitPrice, StringFormat={}{0:#,##0.00}}" Width="95">
+                                    <DataGridTextColumn Header="Ед.цена" Binding="{Binding UnitPrice, StringFormat={}{0:#,##0.00}}" SortMemberPath="UnitPrice" Width="95">
                                         <DataGridTextColumn.ElementStyle>
                                             <Style TargetType="TextBlock">
                                                 <Setter Property="TextAlignment" Value="Right"/>
@@ -890,7 +921,7 @@
                                     </DataGridTextColumn>
 
                                     <!-- 10. Сума ред (Формат: 0.00) -->
-                                    <DataGridTextColumn Header="Сума ред" Binding="{Binding RowTotal, StringFormat={}{0:#,##0.00}}" Width="110">
+                                    <DataGridTextColumn Header="Сума ред" Binding="{Binding RowTotal, StringFormat={}{0:#,##0.00}}" SortMemberPath="RowTotal" Width="110">
                                         <DataGridTextColumn.ElementStyle>
                                             <Style TargetType="TextBlock">
                                                 <Setter Property="TextAlignment" Value="Right"/>
@@ -912,7 +943,9 @@
                         <DockPanel LastChildFill="False">
                             <StackPanel Orientation="Horizontal" DockPanel.Dock="Left" VerticalAlignment="Center">
                                 <materialDesign:PackIcon Kind="Sigma" Foreground="#2B6CB0" Width="20" Height="20" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                                <TextBlock Text="ОБЩО ЗА ПЕРИОДА:" FontWeight="Bold" FontSize="13" Foreground="#2B6CB0" VerticalAlignment="Center"/>
+                                <TextBlock Text="ОБЩО ЗА ПЕРИОДА (" FontWeight="Bold" FontSize="13" Foreground="#2B6CB0" VerticalAlignment="Center"/>
+                                <TextBlock Text="{Binding FormattedPeriodDisplay}" FontWeight="Bold" FontSize="13" Foreground="#1F4E79" VerticalAlignment="Center"/>
+                                <TextBlock Text="):" FontWeight="Bold" FontSize="13" Foreground="#2B6CB0" VerticalAlignment="Center" Margin="0,0,4,0"/>
                                 <TextBlock Text="{Binding DetailedKpiTotalQuantity, StringFormat=' {0:#,##0.000} бр.'}" FontWeight="Bold" FontSize="14" Foreground="#1F4E79" VerticalAlignment="Center"/>
                                 <TextBlock Text=" · " Foreground="#A0AEC0" VerticalAlignment="Center"/>
                                 <TextBlock Text="{Binding DetailedKpiTotalRowSum, StringFormat=' {0:#,##0.00} лв.'}" FontWeight="Bold" FontSize="14" Foreground="#107C41" VerticalAlignment="Center"/>
