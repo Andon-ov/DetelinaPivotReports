@@ -97,7 +97,7 @@ public class ConfigService : IConfigService
                 ["Port"] = settings.Port,
                 ["Database"] = settings.Database,
                 ["User"] = settings.User,
-                ["Password"] = SecurityHelper.EncryptPassword(settings.Password),
+                ["Password"] = settings.Password,
                 ["Charset"] = settings.Charset,
                 ["ConnectionTimeout"] = settings.ConnectionTimeout
             };

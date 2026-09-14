@@ -77,35 +77,11 @@
                                  materialDesign:HintAssist.Hint="Потребител (User: SYSDBA или ATMKIOSK)" 
                                  Style="{StaticResource MaterialDesignFloatingHintTextBox}"/>
 
-                        <!-- Поле за парола с маскиране и бутон за показване/скриване -->
-                        <Grid Grid.Column="2">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-
-                            <!-- Маскирано поле по подразбиране -->
-                            <PasswordBox x:Name="DbPasswordBox" Grid.Column="0"
-                                         materialDesign:HintAssist.Hint="Парола (Password)" 
-                                         Style="{StaticResource MaterialDesignFloatingHintPasswordBox}"
-                                         PasswordChanged="DbPasswordBox_PasswordChanged"/>
-
-                            <!-- Текстово поле при включена видимост (око) -->
-                            <TextBox x:Name="DbPasswordTextBox" Grid.Column="0"
+                        <!-- Поле за парола (само маскиран PasswordBox) -->
+                        <PasswordBox Grid.Column="2" x:Name="DbPasswordBox"
                                      materialDesign:HintAssist.Hint="Парола (Password)" 
-                                     Style="{StaticResource MaterialDesignFloatingHintTextBox}"
-                                     Visibility="Collapsed"
-                                     TextChanged="DbPasswordTextBox_TextChanged"/>
-
-                            <!-- Бутон за показване / скриване на паролата -->
-                            <Button Grid.Column="1" x:Name="TogglePasswordButton"
-                                    Click="TogglePasswordVisibility_Click"
-                                    Style="{StaticResource MaterialDesignFlatButton}"
-                                    Width="30" Height="30" Padding="0" Margin="4,10,0,0"
-                                    ToolTip="Покажи / Скрий паролата">
-                                <materialDesign:PackIcon x:Name="TogglePasswordIcon" Kind="EyeOutline" Width="18" Height="18" Foreground="#718096"/>
-                            </Button>
-                        </Grid>
+                                     Style="{StaticResource MaterialDesignFloatingHintPasswordBox}"
+                                     PasswordChanged="DbPasswordBox_PasswordChanged"/>
                     </Grid>
 
                     <!-- Charset & Timeout -->

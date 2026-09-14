@@ -5,6 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
         xmlns:viewModels="clr-namespace:DetelinaPivotReports.ViewModels"
+        xmlns:lvc="clr-namespace:LiveCharts.Wpf;assembly=LiveCharts.Wpf"
         mc:Ignorable="d"
         Title="Детелина / Eltrade — Аналитични справки за продажби" 
         Height="880" Width="1380" MinHeight="680" MinWidth="1080"
@@ -65,7 +66,7 @@
                     </Border>
                     <StackPanel VerticalAlignment="Center">
                         <TextBlock Text="Детелина / Eltrade BackOffice" FontSize="18" FontWeight="Bold" Foreground="White"/>
-                        <TextBlock Text="Справки за продажби: Матрица за текстил и униформи | Детайлна по терминали и бонове" FontSize="12" Foreground="#CBD5E0"/>
+                        <TextBlock Text="Справки за продажби: Матрица за униформи | Детайлна по бонове | Графичен анализ и визуализация" FontSize="12" Foreground="#CBD5E0"/>
                     </StackPanel>
                 </StackPanel>
 
@@ -874,6 +875,243 @@
                             </StackPanel>
                         </DockPanel>
                     </Border>
+                </Grid>
+            </TabItem>
+
+            <!-- =================== ТАБ 3: ГРАФИЧЕН АНАЛИЗ И ВИЗУАЛИЗАЦИЯ =================== -->
+            <TabItem>
+                <TabItem.Header>
+                    <StackPanel Orientation="Horizontal">
+                        <materialDesign:PackIcon Kind="ChartBoxOutline" Width="18" Height="18" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                        <TextBlock Text="3. Графичен анализ и визуализация" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </TabItem.Header>
+
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <!-- 0: KPIs Ribbon -->
+                        <RowDefinition Height="Auto"/>
+                        <!-- 1: Charts Dashboard -->
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- 0: Информационни карти (KPIs) -->
+                    <UniformGrid Grid.Row="0" Columns="5" Margin="20,12,20,8">
+                        <!-- Карта 1: Общ оборот -->
+                        <Border Style="{StaticResource MetricCardStyle}">
+                            <StackPanel>
+                                <TextBlock Text="ОБЩ ОБОРОТ" FontSize="11" FontWeight="Bold" Foreground="#718096"/>
+                                <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+                                    <TextBlock Text="{Binding DetailedKpiTotalRowSum, StringFormat='{}{0:N2} €'}" FontSize="18" FontWeight="Bold" Foreground="#1F4E79"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Карта 2: Продадени артикули -->
+                        <Border Style="{StaticResource MetricCardStyle}">
+                            <StackPanel>
+                                <TextBlock Text="ПРОДАДЕНИ АРТИКУЛИ" FontSize="11" FontWeight="Bold" Foreground="#718096"/>
+                                <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+                                    <TextBlock Text="{Binding DetailedKpiTotalQuantity, StringFormat='{}{0:#,##0.000}'}" FontSize="18" FontWeight="Bold" Foreground="#107C41"/>
+                                    <TextBlock Text=" бр." FontSize="12" Foreground="#718096" VerticalAlignment="Bottom" Margin="3,0,0,2"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Карта 3: Издадени бонове -->
+                        <Border Style="{StaticResource MetricCardStyle}">
+                            <StackPanel>
+                                <TextBlock Text="ИЗДАДЕНИ БОНОВЕ" FontSize="11" FontWeight="Bold" Foreground="#718096"/>
+                                <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+                                    <TextBlock Text="{Binding DetailedKpiUniqueBonsCount, StringFormat='{}{0:N0}'}" FontSize="18" FontWeight="Bold" Foreground="#2B6CB0"/>
+                                    <TextBlock Text=" поръчки" FontSize="12" Foreground="#718096" VerticalAlignment="Bottom" Margin="3,0,0,2"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Карта 4: Средна стойност на бон -->
+                        <Border Style="{StaticResource MetricCardStyle}">
+                            <StackPanel>
+                                <TextBlock Text="СРЕДЕН БОН" FontSize="11" FontWeight="Bold" Foreground="#718096"/>
+                                <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+                                    <TextBlock Text="{Binding DetailedKpiAverageBonSum, StringFormat='{}{0:N2} €'}" FontSize="18" FontWeight="Bold" Foreground="#4C51BF"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Карта 5: Водещо училище -->
+                        <Border Style="{StaticResource MetricCardStyle}">
+                            <StackPanel>
+                                <TextBlock Text="ТОП УЧИЛИЩЕ / ГРУПА" FontSize="11" FontWeight="Bold" Foreground="#718096"/>
+                                <TextBlock Text="{Binding KpiTopSchoolName}" FontSize="13" FontWeight="SemiBold" Foreground="#2D3748" Margin="0,4,0,0" TextTrimming="CharacterEllipsis"/>
+                            </StackPanel>
+                        </Border>
+                    </UniformGrid>
+
+                    <!-- 1: Индикатор за зареждане / Празна област / Dashboard с графики -->
+                    <Grid Grid.Row="1">
+                        <!-- Индикатор за зареждане -->
+                        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"
+                                    Visibility="{Binding IsLoading, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <ProgressBar IsIndeterminate="True" Width="48" Height="48" Margin="0,0,0,16" Foreground="#1F4E79"/>
+                            <TextBlock Text="Генериране на интерактивни бизнес графики..." FontSize="14" FontWeight="Medium" Foreground="#4A5568"/>
+                        </StackPanel>
+
+                        <!-- Празна графика / Начално състояние -->
+                        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                            <StackPanel.Style>
+                                <Style TargetType="StackPanel">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <MultiDataTrigger>
+                                            <MultiDataTrigger.Conditions>
+                                                <Condition Binding="{Binding HasChartData}" Value="False"/>
+                                                <Condition Binding="{Binding IsLoading}" Value="False"/>
+                                            </MultiDataTrigger.Conditions>
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </MultiDataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </StackPanel.Style>
+                            <materialDesign:PackIcon Kind="ChartBoxOutline" Foreground="#CBD5E0" Width="64" Height="64" HorizontalAlignment="Center" Margin="0,0,0,12"/>
+                            <TextBlock Text="Няма заредени данни за графична визуализация." FontSize="14" Foreground="#718096" HorizontalAlignment="Center"/>
+                            <TextBlock Text="Изберете период, терминал или училище от горната лента и натиснете „ИЗВЛЕЧИ СПРАВКА“" FontSize="12" Foreground="#A0AEC0" Margin="0,4,0,0" HorizontalAlignment="Center"/>
+                        </StackPanel>
+
+                        <!-- Основен графичен Dashboard -->
+                        <Grid Margin="20,4,20,16">
+                            <Grid.Style>
+                                <Style TargetType="Grid">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <MultiDataTrigger>
+                                            <MultiDataTrigger.Conditions>
+                                                <Condition Binding="{Binding HasChartData}" Value="True"/>
+                                                <Condition Binding="{Binding IsLoading}" Value="False"/>
+                                            </MultiDataTrigger.Conditions>
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </MultiDataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Grid.Style>
+                            <Grid.ColumnDefinitions>
+                                <!-- Ляв панел: Donut Chart -->
+                                <ColumnDefinition Width="1.2*"/>
+                                <ColumnDefinition Width="16"/>
+                                <!-- Десен панел: Dual-Axis класиране по училища -->
+                                <ColumnDefinition Width="2.8*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <!-- ================= КАРТА 1: DONUT CHART ================= -->
+                            <Border Grid.Column="0" Background="White" CornerRadius="10" BorderBrush="#E2E8F0" BorderThickness="1" Padding="18,16">
+                                <Border.Effect>
+                                    <DropShadowEffect BlurRadius="10" ShadowDepth="2" Opacity="0.06" Color="#000000"/>
+                                </Border.Effect>
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="*"/>
+                                    </Grid.RowDefinitions>
+
+                                    <!-- Заглавие -->
+                                    <StackPanel Grid.Row="0" Margin="0,0,0,12">
+                                        <StackPanel Orientation="Horizontal">
+                                            <materialDesign:PackIcon Kind="ChartPie" Foreground="#1F4E79" Width="20" Height="20" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                            <TextBlock Text="Оборот и поръчки" FontSize="15" FontWeight="Bold" Foreground="#1E293B"/>
+                                        </StackPanel>
+                                        <TextBlock Text="Съотношение между реализиран оборот (€) и брой издадени бонове" FontSize="11" Foreground="#64748B" Margin="28,2,0,0" TextWrapping="Wrap"/>
+                                    </StackPanel>
+
+                                    <!-- Donut Chart & Center Text -->
+                                    <Grid Grid.Row="1">
+                                        <lvc:PieChart Series="{Binding DonutSeries}"
+                                                      InnerRadius="92"
+                                                      LegendLocation="Bottom"
+                                                      Hoverable="True"
+                                                      Margin="0,0,0,8">
+                                            <lvc:PieChart.ChartLegend>
+                                                <lvc:DefaultLegend BulletSize="12" FontSize="12" Foreground="#475569"/>
+                                            </lvc:PieChart.ChartLegend>
+                                        </lvc:PieChart>
+
+                                        <!-- Изчистен надпис в центъра на кръга -->
+                                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,-32,0,0" IsHitTestVisible="False">
+                                            <materialDesign:PackIcon Kind="CurrencyEur" Foreground="#1F4E79" Width="22" Height="22" HorizontalAlignment="Center" Margin="0,0,0,2"/>
+                                            <TextBlock Text="{Binding DetailedKpiTotalRowSum, StringFormat='{}{0:N2} €'}" FontSize="18" FontWeight="Bold" Foreground="#1F4E79" HorizontalAlignment="Center"/>
+                                            <TextBlock Text="{Binding DetailedKpiTotalQuantity, StringFormat='{}{0:#,##0.##} бр. общо'}" FontSize="12" FontWeight="SemiBold" Foreground="#107C41" HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                                            <TextBlock Text="{Binding DetailedKpiUniqueBonsCount, StringFormat='{}{0:N0} бона'}" FontSize="11" Foreground="#64748B" HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </Grid>
+                            </Border>
+
+                            <!-- ================= КАРТА 2: DUAL-AXIS RANKING BY SCHOOLS ================= -->
+                            <Border Grid.Column="2" Background="White" CornerRadius="10" BorderBrush="#E2E8F0" BorderThickness="1" Padding="18,16">
+                                <Border.Effect>
+                                    <DropShadowEffect BlurRadius="10" ShadowDepth="2" Opacity="0.06" Color="#000000"/>
+                                </Border.Effect>
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="*"/>
+                                    </Grid.RowDefinitions>
+
+                                    <!-- Заглавие и подзаглавие -->
+                                    <DockPanel Grid.Row="0" Margin="0,0,0,12" LastChildFill="False">
+                                        <StackPanel DockPanel.Dock="Left">
+                                            <StackPanel Orientation="Horizontal">
+                                                <materialDesign:PackIcon Kind="ChartBar" Foreground="#1F4E79" Width="20" Height="20" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                                <TextBlock Text="Бизнес класиране по училища" FontSize="15" FontWeight="Bold" Foreground="#1E293B"/>
+                                            </StackPanel>
+                                            <TextBlock Text="Училища/групи в низходящ ред по оборот: стълбове (Оборот €) и крива (Продадени бройки)" FontSize="11" Foreground="#64748B" Margin="28,2,0,0"/>
+                                        </StackPanel>
+
+                                        <Border DockPanel.Dock="Right" Background="#EBF8FF" BorderBrush="#BEE3F8" BorderThickness="1" CornerRadius="4" Padding="8,4" VerticalAlignment="Center">
+                                            <StackPanel Orientation="Horizontal">
+                                                <materialDesign:PackIcon Kind="TrophyOutline" Foreground="#2B6CB0" Width="16" Height="16" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                                <TextBlock Text="Лидер: " FontSize="11" Foreground="#4A5568"/>
+                                                <TextBlock Text="{Binding KpiTopSchoolName}" FontSize="11" FontWeight="Bold" Foreground="#1F4E79"/>
+                                            </StackPanel>
+                                        </Border>
+                                    </DockPanel>
+
+                                    <!-- Cartesian Chart (Dual-Axis) -->
+                                    <lvc:CartesianChart Grid.Row="1"
+                                                        Series="{Binding SchoolRankingSeries}"
+                                                        LegendLocation="Top"
+                                                        Hoverable="True">
+                                        <lvc:CartesianChart.ChartLegend>
+                                            <lvc:DefaultLegend BulletSize="12" FontSize="12" Foreground="#475569" Margin="0,0,0,8"/>
+                                        </lvc:CartesianChart.ChartLegend>
+                                        <lvc:CartesianChart.DataTooltip>
+                                            <lvc:DefaultTooltip SelectionMode="SharedXValues" BulletSize="8" FontSize="12" Background="#1E293B" Foreground="White"/>
+                                        </lvc:CartesianChart.DataTooltip>
+                                        <lvc:CartesianChart.AxisX>
+                                            <lvc:Axis Labels="{Binding SchoolRankingLabels}" LabelsRotation="25" Foreground="#475569">
+                                                <lvc:Axis.Separator>
+                                                    <lvc:Separator Step="1" Stroke="#F1F5F9" StrokeThickness="1"/>
+                                                </lvc:Axis.Separator>
+                                            </lvc:Axis>
+                                        </lvc:CartesianChart.AxisX>
+                                        <lvc:CartesianChart.AxisY>
+                                            <!-- Лява Y-ос: Оборот в евро (€) -->
+                                            <lvc:Axis Title="Оборот (€)" Position="LeftBottom" LabelFormatter="{Binding CurrencyFormatter}" MinValue="0" Foreground="#1F4E79">
+                                                <lvc:Axis.Separator>
+                                                    <lvc:Separator Stroke="#E2E8F0" StrokeDashArray="3"/>
+                                                </lvc:Axis.Separator>
+                                            </lvc:Axis>
+                                            <!-- Дясна Y-ос: Продадени бройки -->
+                                            <lvc:Axis Title="Продадени бройки" Position="RightTop" LabelFormatter="{Binding QuantityFormatter}" MinValue="0" Foreground="#107C41">
+                                                <lvc:Axis.Separator>
+                                                    <lvc:Separator IsEnabled="False"/>
+                                                </lvc:Axis.Separator>
+                                            </lvc:Axis>
+                                        </lvc:CartesianChart.AxisY>
+                                    </lvc:CartesianChart>
+                                </Grid>
+                            </Border>
+                        </Grid>
+                    </Grid>
                 </Grid>
             </TabItem>
         </TabControl>

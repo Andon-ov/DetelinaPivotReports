@@ -11,8 +11,11 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Data;
 using System.Windows.Input;
+using System.Windows.Media;
 using DetelinaPivotReports.Models;
 using DetelinaPivotReports.Services;
+using LiveCharts;
+using LiveCharts.Wpf;
 using Microsoft.Win32;
 
 namespace DetelinaPivotReports.ViewModels;
@@ -73,6 +76,13 @@ public class MainViewModel : ViewModelBase
     private int _detailedKpiUniqueBonsCount;
     private int _detailedKpiTotalRowsCount;
     private decimal _detailedKpiTotalBonSum;
+
+    // Резултати и графики - Справка 3: Графичен анализ и визуализация (Dashboard)
+    private SeriesCollection _donutSeries = new();
+    private SeriesCollection _schoolRankingSeries = new();
+    private string[] _schoolRankingLabels = Array.Empty<string>();
+    private bool _hasChartData;
+    private string _kpiTopSchoolName = "—";
 
     // Събитие за уведомяване на View-то за обновяване на колоните в DataGrid
     public event Action<PivotReportResult>? ReportColumnsGenerated;
@@ -256,7 +266,23 @@ public class MainViewModel : ViewModelBase
     public int SelectedReportIndex
     {
         get => _selectedReportIndex;
-        set => SetProperty(ref _selectedReportIndex, value);
+        set
+        {
+            if (SetProperty(ref _selectedReportIndex, value))
+            {
+                if (value == 2)
+                {
+                    if (_detailedRecords.Count > 0 && !_hasChartData)
+                    {
+                        UpdateChartData(_detailedRecords.ToList());
+                    }
+                    else if (_detailedRecords.Count == 0 && IsConnected && !IsLoading)
+                    {
+                        _ = LoadChartsReportAsync();
+                    }
+                }
+            }
+        }
     }
 
     public ObservableCollection<DetailedSaleRecord> DetailedRecords
@@ -322,6 +348,44 @@ public class MainViewModel : ViewModelBase
         set => SetProperty(ref _detailedKpiTotalBonSum, value);
     }
 
+    // Свойства за Справка 3: Графичен анализ и визуализация (Dashboard)
+    public SeriesCollection DonutSeries
+    {
+        get => _donutSeries;
+        set => SetProperty(ref _donutSeries, value);
+    }
+
+    public SeriesCollection SchoolRankingSeries
+    {
+        get => _schoolRankingSeries;
+        set => SetProperty(ref _schoolRankingSeries, value);
+    }
+
+    public string[] SchoolRankingLabels
+    {
+        get => _schoolRankingLabels;
+        set => SetProperty(ref _schoolRankingLabels, value);
+    }
+
+    public bool HasChartData
+    {
+        get => _hasChartData;
+        set => SetProperty(ref _hasChartData, value);
+    }
+
+    public string KpiTopSchoolName
+    {
+        get => _kpiTopSchoolName;
+        set => SetProperty(ref _kpiTopSchoolName, value);
+    }
+
+    public decimal DetailedKpiAverageBonSum => DetailedKpiUniqueBonsCount > 0 
+        ? Math.Round(DetailedKpiTotalRowSum / DetailedKpiUniqueBonsCount, 2) 
+        : 0m;
+
+    public Func<double, string> CurrencyFormatter { get; } = val => $"{val:N0} €";
+    public Func<double, string> QuantityFormatter { get; } = val => $"{val:N0} бр.";
+
     #endregion
 
     #region Commands
@@ -344,6 +408,9 @@ public class MainViewModel : ViewModelBase
     public ICommand ExportDetailedCsvCommand { get; }
     public ICommand CopyDetailedClipboardCommand { get; }
     public ICommand ClearDetailedSearchCommand { get; }
+
+    // Команди за Справка 3: Графичен анализ
+    public ICommand LoadChartsReportCommand { get; }
 
     #endregion
 
@@ -382,6 +449,9 @@ public class MainViewModel : ViewModelBase
         ExportDetailedCsvCommand = new RelayCommand(async () => await ExportDetailedToCsvAsync(), () => HasDetailedData && !IsLoading);
         CopyDetailedClipboardCommand = new RelayCommand(CopyDetailedClipboard, () => HasDetailedData && !IsLoading);
         ClearDetailedSearchCommand = new RelayCommand(() => DetailedSearchText = string.Empty);
+
+        // Инициализация на команди - Справка 3
+        LoadChartsReportCommand = new RelayCommand(async () => await LoadChartsReportAsync(), () => !IsLoading);
     }
 
     public async Task InitializeDatabaseAsync()
@@ -427,11 +497,15 @@ public class MainViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Извлича справката за текущо избрания таб (0: Матрична справка, 1: Детайлна справка)
+    /// Извлича справката за текущо избрания таб (0: Матрична, 1: Детайлна, 2: Графики)
     /// </summary>
     public async Task LoadActiveReportAsync()
     {
-        if (SelectedReportIndex == 1)
+        if (SelectedReportIndex == 2)
+        {
+            await LoadChartsReportAsync();
+        }
+        else if (SelectedReportIndex == 1)
         {
             await LoadDetailedReportAsync();
         }
@@ -696,6 +770,7 @@ public class MainViewModel : ViewModelBase
 
             HasDetailedData = records.Count > 0;
             UpdateDetailedKpis();
+            UpdateChartData(records);
             sw.Stop();
 
             StatusMessage = $"Детайлната справка е генерирана за {sw.Elapsed.TotalSeconds:F2} сек. Намерени {records.Count:N0} записа, {DetailedKpiUniqueBonsCount:N0} бона, общо {DetailedKpiTotalQuantity:#,##0.000} бр., сума {DetailedKpiTotalRowSum:N2} €";
@@ -733,6 +808,7 @@ public class MainViewModel : ViewModelBase
             DetailedKpiUniqueBonsCount = 0;
             DetailedKpiTotalRowsCount = 0;
             DetailedKpiTotalBonSum = 0m;
+            OnPropertyChanged(nameof(DetailedKpiAverageBonSum));
             return;
         }
 
@@ -742,6 +818,167 @@ public class MainViewModel : ViewModelBase
         DetailedKpiTotalRowsCount = visible.Count;
         DetailedKpiUniqueBonsCount = visible.Select(r => (r.TerminalId, r.BonNumber)).Distinct().Count();
         DetailedKpiTotalBonSum = visible.GroupBy(r => (r.TerminalId, r.BonNumber, r.SaleDateTime.Date)).Sum(g => g.First().BonTotal);
+        OnPropertyChanged(nameof(DetailedKpiAverageBonSum));
+    }
+
+    /// <summary>
+    /// Зарежда данни за третия таб (Графичен анализ и визуализация)
+    /// </summary>
+    public async Task LoadChartsReportAsync()
+    {
+        if (StartDate > EndDate)
+        {
+            MessageBox.Show("Началната дата не може да бъде след крайната дата!", "Внимание", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        IsLoading = true;
+        StatusMessage = "Извличане на данни за графичен анализ...";
+        var sw = Stopwatch.StartNew();
+
+        try
+        {
+            var filter = new ReportFilter
+            {
+                GroupId = SelectedPlugroup?.Id ?? 0,
+                GroupName = SelectedPlugroup?.Name ?? "[Всички училища]",
+                TerminalId = SelectedTerminal?.Id ?? 0,
+                TerminalName = SelectedTerminal?.DisplayName ?? "Всички терминали",
+                StartDate = StartDate,
+                EndDate = EndDate,
+                StartTime = ParseTime(StartTime, new TimeSpan(0, 0, 0), isEndOfDay: false),
+                EndTime = ParseTime(EndTime, new TimeSpan(23, 59, 59), isEndOfDay: true)
+            };
+
+            var records = await _firebirdService.GetDetailedSalesRecordsAsync(_configService.DatabaseSettings, filter);
+            ProcessReceiptGrouping(records);
+            DetailedRecords = new ObservableCollection<DetailedSaleRecord>(records);
+
+            var view = CollectionViewSource.GetDefaultView(DetailedRecords);
+            view.Filter = FilterDetailedRecord;
+            DetailedDataView = view;
+
+            HasDetailedData = records.Count > 0;
+            UpdateDetailedKpis();
+            UpdateChartData(records);
+            sw.Stop();
+
+            StatusMessage = $"Графичният анализ е генериран за {sw.Elapsed.TotalSeconds:F2} сек. {records.Count:N0} записа, {DetailedKpiUniqueBonsCount:N0} бона, общ оборот {DetailedKpiTotalRowSum:N2} €";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Грешка при графичния анализ: {ex.Message}";
+            MessageBox.Show($"Възникна грешка при извличане на данните за графиките:\n\n{ex.Message}", "Грешка", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    /// <summary>
+    /// Преизчислява сериите за Donut Chart (Графика 1) и Dual-Axis Cartesian Chart (Графика 2).
+    /// </summary>
+    public void UpdateChartData(IList<DetailedSaleRecord>? records)
+    {
+        if (Application.Current != null && Application.Current.Dispatcher.CheckAccess() == false)
+        {
+            Application.Current.Dispatcher.Invoke(() => UpdateChartData(records));
+            return;
+        }
+
+        if (records == null || records.Count == 0)
+        {
+            DonutSeries = new SeriesCollection();
+            SchoolRankingSeries = new SeriesCollection();
+            SchoolRankingLabels = Array.Empty<string>();
+            HasChartData = false;
+            KpiTopSchoolName = "—";
+            return;
+        }
+
+        // 1. Графика 1: Donut Chart - Съотношение Оборот (€) към Брой поръчки / бонове (PushOut = 12 за Оборот)
+        decimal totalTurnover = records.Sum(r => r.RowTotal);
+        int totalBons = records.Select(r => r.ReceiptKey).Distinct().Count();
+
+        var donut = new SeriesCollection
+        {
+            new PieSeries
+            {
+                Title = "Оборот (€)",
+                Values = new ChartValues<double> { (double)totalTurnover },
+                DataLabels = true,
+                LabelPoint = point => $"{point.Y:N2} €",
+                Fill = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#1F4E79")),
+                PushOut = 12
+            },
+            new PieSeries
+            {
+                Title = "Брой поръчки",
+                Values = new ChartValues<double> { (double)totalBons },
+                DataLabels = true,
+                LabelPoint = point => $"{point.Y:N0} бр.",
+                Fill = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#107C41")),
+                PushOut = 0
+            }
+        };
+
+        // 2. Графика 2: Бизнес класиране по училища (Dual-Axis: Стълбове + Линия)
+        // X-ос: Имената на училищата / групите, подредени по най-голям оборот в низходящ ред (ТОП училищата напред)
+        var schoolGroups = records
+            .GroupBy(r => string.IsNullOrWhiteSpace(r.GroupName) ? "[Без училище/група]" : r.GroupName.Trim())
+            .Select(g => new
+            {
+                SchoolName = g.Key,
+                TotalTurnover = g.Sum(r => r.RowTotal),
+                TotalQuantity = g.Sum(r => r.Quantity)
+            })
+            .OrderByDescending(x => x.TotalTurnover)
+            .ToList();
+
+        var labels = schoolGroups.Select(x => x.SchoolName).ToArray();
+        var turnoverValues = new ChartValues<double>(schoolGroups.Select(x => (double)x.TotalTurnover));
+        var quantityValues = new ChartValues<double>(schoolGroups.Select(x => (double)x.TotalQuantity));
+
+        var rankingSeries = new SeriesCollection
+        {
+            new ColumnSeries
+            {
+                Title = "Оборот",
+                Values = turnoverValues,
+                ScalesYAt = 0,
+                Fill = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#1F4E79")),
+                MaxColumnWidth = 40,
+                LabelPoint = point => $"{point.Y:N2} €"
+            },
+            new LineSeries
+            {
+                Title = "Продадени",
+                Values = quantityValues,
+                ScalesYAt = 1,
+                Stroke = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#107C41")),
+                Fill = new SolidColorBrush(Color.FromArgb(20, 16, 124, 65)),
+                PointGeometry = DefaultGeometries.Circle,
+                PointGeometrySize = 10,
+                PointForeground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#107C41")),
+                LineSmoothness = 0.35,
+                LabelPoint = point => $"{point.Y:#,##0.##} бр."
+            }
+        };
+
+        DonutSeries = donut;
+        SchoolRankingSeries = rankingSeries;
+        SchoolRankingLabels = labels;
+        HasChartData = true;
+
+        if (schoolGroups.Count > 0)
+        {
+            KpiTopSchoolName = $"{schoolGroups[0].SchoolName} ({schoolGroups[0].TotalTurnover:N2} €)";
+        }
+        else
+        {
+            KpiTopSchoolName = "—";
+        }
     }
 
     /// <summary>
