@@ -30,6 +30,28 @@
                     </Setter.Value>
                 </Setter>
             </Style>
+            <!-- Стилизиране на DatePicker и Calendar за предотвратяване на бели букви върху бял фон (White-on-White) -->
+            <Style TargetType="{x:Type DatePicker}" BasedOn="{StaticResource MaterialDesignDatePicker}">
+                <Setter Property="Foreground" Value="#0F172A"/>
+            </Style>
+
+            <Style TargetType="{x:Type DatePickerTextBox}">
+                <Setter Property="Foreground" Value="#0F172A"/>
+                <Setter Property="CaretBrush" Value="#0F172A"/>
+            </Style>
+
+            <Style TargetType="{x:Type Calendar}">
+                <Setter Property="Foreground" Value="#1E293B"/>
+                <Setter Property="Background" Value="White"/>
+            </Style>
+
+            <Style TargetType="{x:Type CalendarDayButton}">
+                <Setter Property="Foreground" Value="#1E293B"/>
+            </Style>
+
+            <Style TargetType="{x:Type CalendarButton}">
+                <Setter Property="Foreground" Value="#1E293B"/>
+            </Style>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

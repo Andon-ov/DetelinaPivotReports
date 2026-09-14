@@ -12,13 +12,40 @@
         Background="#F8FAFC"
         FontFamily="Segoe UI, Roboto, Arial">
 
+    <Window.Resources>
+        <!-- Стилизиране за предотвратяване на бели букви върху бял фон в календара и текстовите кутии -->
+        <Style TargetType="{x:Type DatePicker}" BasedOn="{StaticResource MaterialDesignDatePicker}">
+            <Setter Property="Foreground" Value="#0F172A"/>
+        </Style>
+
+        <Style TargetType="{x:Type DatePickerTextBox}">
+            <Setter Property="Foreground" Value="#1E293B"/>
+            <Setter Property="CaretBrush" Value="#0F172A"/>
+        </Style>
+
+        <Style TargetType="{x:Type Calendar}">
+            <Setter Property="Foreground" Value="#1E293B"/>
+            <Setter Property="Background" Value="White"/>
+        </Style>
+
+        <Style TargetType="{x:Type CalendarDayButton}">
+            <Setter Property="Foreground" Value="#1E293B"/>
+        </Style>
+
+        <Style TargetType="{x:Type CalendarButton}">
+            <Setter Property="Foreground" Value="#1E293B"/>
+        </Style>
+    </Window.Resources>
+
     <Grid>
         <Grid.RowDefinitions>
             <!-- 0: Header -->
             <RowDefinition Height="Auto"/>
-            <!-- 1: Tabs Content -->
+            <!-- 1: Shared Filter Panel -->
+            <RowDefinition Height="Auto"/>
+            <!-- 2: Tabs Content -->
             <RowDefinition Height="*"/>
-            <!-- 2: Status Bar -->
+            <!-- 3: Status Bar -->
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
@@ -65,8 +92,110 @@
             </Grid>
         </Border>
 
-        <!-- =================== 1. TABS CONTENT =================== -->
-        <TabControl Grid.Row="1" 
+        <!-- =================== 1. ОБЩ ПАНЕЛ С ФИЛТРИ (ГОРНА ЛЕНТА) =================== -->
+        <Border Grid.Row="1" Background="White" BorderBrush="#E2E8F0" BorderThickness="0,0,0,1" Padding="20,14">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="12"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <!-- Row 0: Номенклатури (Училище и Терминал) -->
+                <Grid Grid.Row="0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="2.5*"/>
+                        <ColumnDefinition Width="24"/>
+                        <ColumnDefinition Width="1.5*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Артикулна група / Училище -->
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Text="Училище / Артикулна група:" FontSize="12" FontWeight="SemiBold" Foreground="#4A5568" Margin="0,0,0,4"/>
+                        <ComboBox ItemsSource="{Binding Plugroups}" 
+                                  SelectedItem="{Binding SelectedPlugroup}"
+                                  DisplayMemberPath="Name"
+                                  SelectedValuePath="Id"
+                                  Foreground="#0F172A"
+                                  materialDesign:HintAssist.Hint="Всички училища"
+                                  FontSize="13"/>
+                    </StackPanel>
+
+                    <!-- POS Терминал -->
+                    <StackPanel Grid.Column="2">
+                        <TextBlock Text="POS Терминал / Обект:" FontSize="12" FontWeight="SemiBold" Foreground="#4A5568" Margin="0,0,0,4"/>
+                        <ComboBox ItemsSource="{Binding Terminals}" 
+                                  SelectedItem="{Binding SelectedTerminal}"
+                                  DisplayMemberPath="DisplayName"
+                                  SelectedValuePath="Id"
+                                  Foreground="#0F172A"
+                                  materialDesign:HintAssist.Hint="Всички терминали"
+                                  FontSize="13"/>
+                    </StackPanel>
+                </Grid>
+
+                <!-- Row 1: Период (Бързи бутони + DatePickers с часове) + Бутон "ИЗВЛЕЧИ СПРАВКА" -->
+                <DockPanel Grid.Row="2" LastChildFill="False">
+                    <!-- Лява част: Бързи бутони за период -->
+                    <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Text="Период:" FontSize="12" FontWeight="SemiBold" Foreground="#4A5568" VerticalAlignment="Center" Margin="0,0,10,0"/>
+
+                        <Button Command="{Binding QuickPeriodCommand}" CommandParameter="Today"
+                                Content="Днес" Style="{StaticResource MaterialDesignOutlinedButton}" 
+                                Height="30" Padding="10,0" Margin="0,0,6,0" FontSize="11"/>
+
+                        <Button Command="{Binding QuickPeriodCommand}" CommandParameter="Yesterday"
+                                Content="Последен 1 ден" Style="{StaticResource MaterialDesignOutlinedButton}" 
+                                Height="30" Padding="10,0" Margin="0,0,6,0" FontSize="11"/>
+
+                        <Button Command="{Binding QuickPeriodCommand}" CommandParameter="10Days"
+                                Content="10 дни" Style="{StaticResource MaterialDesignOutlinedButton}" 
+                                Height="30" Padding="10,0" Margin="0,0,6,0" FontSize="11"/>
+
+                        <Button Command="{Binding QuickPeriodCommand}" CommandParameter="30Days"
+                                Content="30 дни" Style="{StaticResource MaterialDesignOutlinedButton}" 
+                                Height="30" Padding="10,0" Margin="0,0,6,0" FontSize="11"/>
+
+                        <Button Command="{Binding QuickPeriodCommand}" CommandParameter="50Days"
+                                Content="50 дни" Style="{StaticResource MaterialDesignOutlinedButton}" 
+                                Height="30" Padding="10,0" Margin="0,0,6,0" FontSize="11"/>
+
+                        <Button Command="{Binding QuickPeriodCommand}" CommandParameter="ThisMonth"
+                                Content="Този месец" Style="{StaticResource MaterialDesignOutlinedButton}" 
+                                Height="30" Padding="10,0" Margin="0,0,6,0" FontSize="11"/>
+                    </StackPanel>
+
+                    <!-- Дясна част: Бутон "ИЗВЛЕЧИ СПРАВКА" -->
+                    <Button DockPanel.Dock="Right" Command="{Binding LoadActiveReportCommand}"
+                            Background="#1F4E79" BorderBrush="#1F4E79" Foreground="White"
+                            Height="38" Padding="20,0" FontWeight="Bold" FontSize="13" Margin="16,0,0,0"
+                            Style="{StaticResource MaterialDesignRaisedButton}">
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="LightningBolt" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="ИЗВЛЕЧИ СПРАВКА" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+
+                    <!-- Дясна част (до бутона): Календари От / До с часове -->
+                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Text="От:" FontSize="12" FontWeight="SemiBold" Foreground="#4A5568" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <DatePicker SelectedDate="{Binding StartDate, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                                    Foreground="#0F172A" Width="115" Height="32" Margin="0,0,4,0" FontSize="12"/>
+                        <TextBox Text="{Binding StartTime}" Width="48" Height="32" VerticalContentAlignment="Center" HorizontalContentAlignment="Center"
+                                 ToolTip="Начален час (ЧЧ:ММ)" FontSize="12" FontWeight="SemiBold" Foreground="#0F172A" CaretBrush="#0F172A" Margin="0,0,12,0"/>
+
+                        <TextBlock Text="До:" FontSize="12" FontWeight="SemiBold" Foreground="#4A5568" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <DatePicker SelectedDate="{Binding EndDate, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                                    Foreground="#0F172A" Width="115" Height="32" Margin="0,0,4,0" FontSize="12"/>
+                        <TextBox Text="{Binding EndTime}" Width="48" Height="32" VerticalContentAlignment="Center" HorizontalContentAlignment="Center"
+                                 ToolTip="Краен час (ЧЧ:ММ)" FontSize="12" FontWeight="SemiBold" Foreground="#0F172A" CaretBrush="#0F172A"/>
+                    </StackPanel>
+                </DockPanel>
+            </Grid>
+        </Border>
+
+        <!-- =================== 2. TABS CONTENT =================== -->
+        <TabControl Grid.Row="2" 
                     SelectedIndex="{Binding SelectedReportIndex, Mode=TwoWay}"
                     Background="#F8FAFC"
                     BorderThickness="0"
@@ -125,9 +254,9 @@
 
                 <Grid>
                     <Grid.RowDefinitions>
-                        <!-- 0: Filter Panel -->
+                        <!-- 0: KPIs -->
                         <RowDefinition Height="Auto"/>
-                        <!-- 1: KPIs & Search -->
+                        <!-- 1: Actions Toolbar -->
                         <RowDefinition Height="Auto"/>
                         <!-- 2: Pivot Grid -->
                         <RowDefinition Height="*"/>
@@ -135,214 +264,54 @@
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
-                    <!-- Filter Panel -->
-                    <Border Grid.Row="0" Background="White" BorderBrush="#E2E8F0" BorderThickness="0,0,0,1" Padding="20,16">
-                        <Grid>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="12"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="14"/>
-                                <RowDefinition Height="Auto"/>
-                            </Grid.RowDefinitions>
-
-                            <!-- Row 1: Номенклатури (Училище и Терминал) -->
-                            <Grid Grid.Row="0">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="2.5*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="24"/>
-                                    <ColumnDefinition Width="1.5*"/>
-                                    <ColumnDefinition Width="24"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-
-                                <!-- Артикулна група / Училище -->
-                                <StackPanel Grid.Column="0">
-                                    <TextBlock Text="Училище / Артикулна група:" FontSize="12" FontWeight="SemiBold" Foreground="#4A5568" Margin="0,0,0,4"/>
-                                    <ComboBox ItemsSource="{Binding Plugroups}" 
-                                              SelectedItem="{Binding SelectedPlugroup}"
-                                              DisplayMemberPath="DisplayName"
-                                              IsEditable="True"
-                                              materialDesign:HintAssist.Hint="Изберете училище или група..."
-                                              FontSize="13"/>
+                    <!-- 0: Информационни карти (KPIs) -->
+                    <UniformGrid Grid.Row="0" Columns="4" Margin="20,12,20,10">
+                        <!-- Карта 1: Общо бройки -->
+                        <Border Style="{StaticResource MetricCardStyle}">
+                            <StackPanel>
+                                <TextBlock Text="ОБЩО ПРОДАДЕНИ" FontSize="11" FontWeight="Bold" Foreground="#718096"/>
+                                <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+                                    <TextBlock Text="{Binding KpiTotalQuantity, StringFormat={}{0:#,##0.##}}" FontSize="18" FontWeight="Bold" Foreground="#1F4E79"/>
+                                    <TextBlock Text=" бр." FontSize="12" Foreground="#718096" VerticalAlignment="Bottom" Margin="3,0,0,2"/>
                                 </StackPanel>
+                            </StackPanel>
+                        </Border>
 
-                                <!-- Чекбокс Включи подгрупи -->
-                                <CheckBox Grid.Column="1" IsChecked="{Binding IncludeSubgroups}" 
-                                          Content="Включи подгрупи" VerticalAlignment="Bottom" Margin="12,0,0,4"
-                                          ToolTip="Включва и вложените подгрупи (класове) за избраното училище"
-                                          FontSize="12" Foreground="#4A5568"/>
-
-                                <!-- POS Терминал -->
-                                <StackPanel Grid.Column="3">
-                                    <TextBlock Text="POS Терминал / Обект:" FontSize="12" FontWeight="SemiBold" Foreground="#4A5568" Margin="0,0,0,4"/>
-                                    <ComboBox ItemsSource="{Binding Terminals}" 
-                                              SelectedItem="{Binding SelectedTerminal}"
-                                              DisplayMemberPath="DisplayName"
-                                              materialDesign:HintAssist.Hint="Всички терминали"
-                                              FontSize="13"/>
+                        <!-- Карта 2: Уникални модели -->
+                        <Border Style="{StaticResource MetricCardStyle}">
+                            <StackPanel>
+                                <TextBlock Text="УНИКАЛНИ МОДЕЛИ" FontSize="11" FontWeight="Bold" Foreground="#718096"/>
+                                <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+                                    <TextBlock Text="{Binding KpiUniqueArticles}" FontSize="18" FontWeight="Bold" Foreground="#2B6CB0"/>
+                                    <TextBlock Text=" модела" FontSize="12" Foreground="#718096" VerticalAlignment="Bottom" Margin="3,0,0,2"/>
                                 </StackPanel>
+                            </StackPanel>
+                        </Border>
 
-                                <!-- Опции за празни размери -->
-                                <CheckBox Grid.Column="5" IsChecked="{Binding HideEmptyDays}" 
-                                          Content="Скриване на празни размери" VerticalAlignment="Bottom" Margin="0,0,0,4"
-                                          ToolTip="Показва само размерите, за които има регистрирани продажби за периода"
-                                          FontSize="12" Foreground="#4A5568"/>
-                            </Grid>
-
-                            <!-- Row 2: Период (Бързи бутони + DatePickers) -->
-                            <Grid Grid.Row="2">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-
-                                <!-- Бързи бутони за период -->
-                                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                                    <TextBlock Text="Период:" FontSize="12" FontWeight="SemiBold" Foreground="#4A5568" VerticalAlignment="Center" Margin="0,0,10,0"/>
-
-                                    <Button Command="{Binding QuickPeriodCommand}" CommandParameter="Today"
-                                            Content="Днес" Style="{StaticResource MaterialDesignOutlinedButton}" 
-                                            Height="30" Padding="10,0" Margin="0,0,6,0" FontSize="11"/>
-
-                                    <Button Command="{Binding QuickPeriodCommand}" CommandParameter="Yesterday"
-                                            Content="Последен 1 ден" Style="{StaticResource MaterialDesignOutlinedButton}" 
-                                            Height="30" Padding="10,0" Margin="0,0,6,0" FontSize="11"/>
-
-                                    <Button Command="{Binding QuickPeriodCommand}" CommandParameter="10Days"
-                                            Content="10 дни" Style="{StaticResource MaterialDesignOutlinedButton}" 
-                                            Height="30" Padding="10,0" Margin="0,0,6,0" FontSize="11"/>
-
-                                    <Button Command="{Binding QuickPeriodCommand}" CommandParameter="30Days"
-                                            Content="30 дни" Style="{StaticResource MaterialDesignOutlinedButton}" 
-                                            Height="30" Padding="10,0" Margin="0,0,6,0" FontSize="11"/>
-
-                                    <Button Command="{Binding QuickPeriodCommand}" CommandParameter="50Days"
-                                            Content="50 дни" Style="{StaticResource MaterialDesignOutlinedButton}" 
-                                            Height="30" Padding="10,0" Margin="0,0,6,0" FontSize="11"/>
-
-                                    <Button Command="{Binding QuickPeriodCommand}" CommandParameter="ThisMonth"
-                                            Content="Този месец" Style="{StaticResource MaterialDesignOutlinedButton}" 
-                                            Height="30" Padding="10,0" Margin="0,0,6,0" FontSize="11"/>
+                        <!-- Карта 3: Активни размери -->
+                        <Border Style="{StaticResource MetricCardStyle}">
+                            <StackPanel>
+                                <TextBlock Text="АКТИВНИ РАЗМЕРИ" FontSize="11" FontWeight="Bold" Foreground="#718096"/>
+                                <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+                                    <TextBlock Text="{Binding KpiActiveDays}" FontSize="18" FontWeight="Bold" Foreground="#319795"/>
+                                    <TextBlock Text=" размера" FontSize="12" Foreground="#718096" VerticalAlignment="Bottom" Margin="3,0,0,2"/>
                                 </StackPanel>
+                            </StackPanel>
+                        </Border>
 
-                                <!-- Ръчен избор на дати (От дата - До дата) -->
-                                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                                    <TextBlock Text="От:" FontSize="12" FontWeight="SemiBold" Foreground="#4A5568" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                                    <DatePicker SelectedDate="{Binding StartDate}" Width="130" Height="32" Margin="0,0,16,0" FontSize="12"/>
+                        <!-- Карта 4: Най-търсен размер -->
+                        <Border Style="{StaticResource MetricCardStyle}">
+                            <StackPanel>
+                                <TextBlock Text="ТОП РАЗМЕР" FontSize="11" FontWeight="Bold" Foreground="#718096"/>
+                                <TextBlock Text="{Binding KpiPeakDate}" FontSize="13" FontWeight="SemiBold" Foreground="#D69E2E" Margin="0,4,0,0" TextTrimming="CharacterEllipsis"/>
+                            </StackPanel>
+                        </Border>
+                    </UniformGrid>
 
-                                    <TextBlock Text="До:" FontSize="12" FontWeight="SemiBold" Foreground="#4A5568" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                                    <DatePicker SelectedDate="{Binding EndDate}" Width="130" Height="32" FontSize="12"/>
-                                </StackPanel>
-                            </Grid>
-
-                            <!-- Row 3: Действия и Експорт -->
-                            <DockPanel Grid.Row="4" LastChildFill="False">
-                                <!-- Бутон Генерирай -->
-                                <Button DockPanel.Dock="Left" Command="{Binding LoadReportCommand}"
-                                        Background="#1F4E79" BorderBrush="#1F4E79" Foreground="White"
-                                        Height="40" Padding="20,0" FontWeight="Bold" FontSize="13"
-                                        Style="{StaticResource MaterialDesignRaisedButton}">
-                                    <StackPanel Orientation="Horizontal">
-                                        <materialDesign:PackIcon Kind="LightningBolt" Margin="0,0,8,0" VerticalAlignment="Center"/>
-                                        <TextBlock Text="ИЗВЛЕЧИ СПРАВКА" VerticalAlignment="Center"/>
-                                    </StackPanel>
-                                </Button>
-
-                                <!-- Експорт бутони -->
-                                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                                    <Button Command="{Binding ExportExcelCommand}"
-                                            Background="#107C41" BorderBrush="#107C41" Foreground="White"
-                                            Height="36" Padding="14,0" Margin="0,0,8,0" FontSize="12"
-                                            ToolTip="Експорт на пълната крос-таблица в Microsoft Excel (.xlsx) с форматиране"
-                                            Style="{StaticResource MaterialDesignRaisedButton}">
-                                        <StackPanel Orientation="Horizontal">
-                                            <materialDesign:PackIcon Kind="FileExcelOutline" Margin="0,0,6,0" VerticalAlignment="Center"/>
-                                            <TextBlock Text="Експорт в Excel (.xlsx)" VerticalAlignment="Center"/>
-                                        </StackPanel>
-                                    </Button>
-
-                                    <Button Command="{Binding ExportCsvCommand}"
-                                            Style="{StaticResource MaterialDesignOutlinedButton}"
-                                            BorderBrush="#718096" Foreground="#2D3748"
-                                            Height="36" Padding="12,0" Margin="0,0,8,0" FontSize="12"
-                                            ToolTip="Експорт в CSV с UTF-8 BOM и разделител точка и запетая">
-                                        <StackPanel Orientation="Horizontal">
-                                            <materialDesign:PackIcon Kind="FileDelimitedOutline" Margin="0,0,6,0" VerticalAlignment="Center"/>
-                                            <TextBlock Text="CSV" VerticalAlignment="Center"/>
-                                        </StackPanel>
-                                    </Button>
-
-                                    <Button Command="{Binding CopyClipboardCommand}"
-                                            Style="{StaticResource MaterialDesignOutlinedButton}"
-                                            BorderBrush="#718096" Foreground="#2D3748"
-                                            Height="36" Padding="12,0" FontSize="12"
-                                            ToolTip="Копиране на таблицата в клипборда за директно поставяне в Excel">
-                                        <StackPanel Orientation="Horizontal">
-                                            <materialDesign:PackIcon Kind="ContentCopy" Margin="0,0,6,0" VerticalAlignment="Center"/>
-                                            <TextBlock Text="Копирай" VerticalAlignment="Center"/>
-                                        </StackPanel>
-                                    </Button>
-                                </StackPanel>
-                            </DockPanel>
-                        </Grid>
-                    </Border>
-
-                    <!-- KPIs & Search -->
-                    <Grid Grid.Row="1" Margin="20,12,20,8">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="380"/>
-                        </Grid.ColumnDefinitions>
-
-                        <!-- Информационни карти (KPIs) -->
-                        <UniformGrid Grid.Column="0" Columns="4" Margin="0,0,16,0">
-                            <!-- Карта 1: Общо бройки -->
-                            <Border Style="{StaticResource MetricCardStyle}">
-                                <StackPanel>
-                                    <TextBlock Text="ОБЩО ПРОДАДЕНИ" FontSize="11" FontWeight="Bold" Foreground="#718096"/>
-                                    <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
-                                        <TextBlock Text="{Binding KpiTotalQuantity, StringFormat={}{0:#,##0.##}}" FontSize="18" FontWeight="Bold" Foreground="#1F4E79"/>
-                                        <TextBlock Text=" бр." FontSize="12" Foreground="#718096" VerticalAlignment="Bottom" Margin="3,0,0,2"/>
-                                    </StackPanel>
-                                </StackPanel>
-                            </Border>
-
-                            <!-- Карта 2: Уникални модели -->
-                            <Border Style="{StaticResource MetricCardStyle}">
-                                <StackPanel>
-                                    <TextBlock Text="УНИКАЛНИ МОДЕЛИ" FontSize="11" FontWeight="Bold" Foreground="#718096"/>
-                                    <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
-                                        <TextBlock Text="{Binding KpiUniqueArticles}" FontSize="18" FontWeight="Bold" Foreground="#2B6CB0"/>
-                                        <TextBlock Text=" модела" FontSize="12" Foreground="#718096" VerticalAlignment="Bottom" Margin="3,0,0,2"/>
-                                    </StackPanel>
-                                </StackPanel>
-                            </Border>
-
-                            <!-- Карта 3: Активни размери -->
-                            <Border Style="{StaticResource MetricCardStyle}">
-                                <StackPanel>
-                                    <TextBlock Text="АКТИВНИ РАЗМЕРИ" FontSize="11" FontWeight="Bold" Foreground="#718096"/>
-                                    <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
-                                        <TextBlock Text="{Binding KpiActiveDays}" FontSize="18" FontWeight="Bold" Foreground="#319795"/>
-                                        <TextBlock Text=" размера" FontSize="12" Foreground="#718096" VerticalAlignment="Bottom" Margin="3,0,0,2"/>
-                                    </StackPanel>
-                                </StackPanel>
-                            </Border>
-
-                            <!-- Карта 4: Най-търсен размер -->
-                            <Border Style="{StaticResource MetricCardStyle}">
-                                <StackPanel>
-                                    <TextBlock Text="ТОП РАЗМЕР" FontSize="11" FontWeight="Bold" Foreground="#718096"/>
-                                    <TextBlock Text="{Binding KpiPeakDate}" FontSize="13" FontWeight="SemiBold" Foreground="#D69E2E" Margin="0,4,0,0" TextTrimming="CharacterEllipsis"/>
-                                </StackPanel>
-                            </Border>
-                        </UniformGrid>
-
-                        <!-- Бързо филтриране в таблицата (Live Search) -->
-                        <Border Grid.Column="1" Background="White" BorderBrush="#CBD5E0" BorderThickness="1" CornerRadius="8" Padding="10,4" VerticalAlignment="Center">
+                    <!-- 1: Действия и Търсене (Search Box, Чекбокс и Експорт) -->
+                    <DockPanel Grid.Row="1" Margin="20,0,20,8" LastChildFill="False">
+                        <!-- Търсене по размер -->
+                        <Border DockPanel.Dock="Left" Background="White" BorderBrush="#CBD5E0" BorderThickness="1" CornerRadius="8" Padding="10,4" Width="300" VerticalAlignment="Center">
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto"/>
@@ -353,6 +322,7 @@
                                 <materialDesign:PackIcon Grid.Column="0" Kind="Magnify" Foreground="#A0AEC0" Width="20" Height="20" VerticalAlignment="Center" Margin="0,0,8,0"/>
 
                                 <TextBox Grid.Column="1" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                                         Foreground="#0F172A" CaretBrush="#0F172A"
                                          materialDesign:HintAssist.Hint="Търсене по размер (напр. 128, M, S)..."
                                          BorderThickness="0" VerticalAlignment="Center" FontSize="13"/>
 
@@ -364,7 +334,49 @@
                                 </Button>
                             </Grid>
                         </Border>
-                    </Grid>
+
+                        <!-- Скриване на празни размери -->
+                        <CheckBox DockPanel.Dock="Left" IsChecked="{Binding HideEmptyDays}" 
+                                  Content="Скриване на празни размери" VerticalAlignment="Center" Margin="16,0,0,0"
+                                  ToolTip="Показва само размерите, за които има регистрирани продажби за периода"
+                                  FontSize="12" Foreground="#4A5568"/>
+
+                        <!-- Експорт бутони -->
+                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                            <Button Command="{Binding ExportExcelCommand}"
+                                    Background="#107C41" BorderBrush="#107C41" Foreground="White"
+                                    Height="36" Padding="14,0" Margin="0,0,8,0" FontSize="12"
+                                    ToolTip="Експорт на пълната крос-таблица в Microsoft Excel (.xlsx) с форматиране"
+                                    Style="{StaticResource MaterialDesignRaisedButton}">
+                                <StackPanel Orientation="Horizontal">
+                                    <materialDesign:PackIcon Kind="FileExcelOutline" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="Експорт в Excel (.xlsx)" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+
+                            <Button Command="{Binding ExportCsvCommand}"
+                                    Style="{StaticResource MaterialDesignOutlinedButton}"
+                                    BorderBrush="#718096" Foreground="#2D3748"
+                                    Height="36" Padding="12,0" Margin="0,0,8,0" FontSize="12"
+                                    ToolTip="Експорт в CSV с UTF-8 BOM и разделител точка и запетая">
+                                <StackPanel Orientation="Horizontal">
+                                    <materialDesign:PackIcon Kind="FileDelimitedOutline" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="CSV" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+
+                            <Button Command="{Binding CopyClipboardCommand}"
+                                    Style="{StaticResource MaterialDesignOutlinedButton}"
+                                    BorderBrush="#718096" Foreground="#2D3748"
+                                    Height="36" Padding="12,0" FontSize="12"
+                                    ToolTip="Копиране на таблицата в клипборда за директно поставяне в Excel">
+                                <StackPanel Orientation="Horizontal">
+                                    <materialDesign:PackIcon Kind="ContentCopy" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="Копирай" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                    </DockPanel>
 
                     <!-- Pivot Matrix DataGrid -->
                     <Border Grid.Row="2" Margin="20,4,20,4" Background="White" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="8">
@@ -490,9 +502,9 @@
 
                 <Grid>
                     <Grid.RowDefinitions>
-                        <!-- 0: Filter Panel -->
+                        <!-- 0: KPIs -->
                         <RowDefinition Height="Auto"/>
-                        <!-- 1: KPIs & Search -->
+                        <!-- 1: Actions Toolbar -->
                         <RowDefinition Height="Auto"/>
                         <!-- 2: Detailed DataGrid -->
                         <RowDefinition Height="*"/>
@@ -500,222 +512,54 @@
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
-                    <!-- Filter Panel -->
-                    <Border Grid.Row="0" Background="White" BorderBrush="#E2E8F0" BorderThickness="0,0,0,1" Padding="20,16">
-                        <Grid>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="12"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="14"/>
-                                <RowDefinition Height="Auto"/>
-                            </Grid.RowDefinitions>
-
-                            <!-- Row 1: Номенклатури (Училище и Терминал) -->
-                            <Grid Grid.Row="0">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="2.5*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="24"/>
-                                    <ColumnDefinition Width="1.5*"/>
-                                </Grid.ColumnDefinitions>
-
-                                <!-- Артикулна група / Училище -->
-                                <StackPanel Grid.Column="0">
-                                    <TextBlock Text="Училище / Артикулна група:" FontSize="12" FontWeight="SemiBold" Foreground="#4A5568" Margin="0,0,0,4"/>
-                                    <ComboBox ItemsSource="{Binding Plugroups}" 
-                                              SelectedItem="{Binding SelectedPlugroup}"
-                                              DisplayMemberPath="DisplayName"
-                                              IsEditable="True"
-                                              materialDesign:HintAssist.Hint="Всички групи / изберете група..."
-                                              FontSize="13"/>
+                    <!-- 0: Информационни карти (KPIs) -->
+                    <UniformGrid Grid.Row="0" Columns="4" Margin="20,12,20,10">
+                        <!-- Карта 1: Общо бройки (Количество: 0.000) -->
+                        <Border Style="{StaticResource MetricCardStyle}">
+                            <StackPanel>
+                                <TextBlock Text="ОБЩО ПРОДАДЕНИ" FontSize="11" FontWeight="Bold" Foreground="#718096"/>
+                                <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+                                    <TextBlock Text="{Binding DetailedKpiTotalQuantity, StringFormat={}{0:#,##0.000}}" FontSize="18" FontWeight="Bold" Foreground="#1F4E79"/>
+                                    <TextBlock Text=" бр." FontSize="12" Foreground="#718096" VerticalAlignment="Bottom" Margin="3,0,0,2"/>
                                 </StackPanel>
+                            </StackPanel>
+                        </Border>
 
-                                <!-- Чекбокс Включи подгрупи -->
-                                <CheckBox Grid.Column="1" IsChecked="{Binding IncludeSubgroups}" 
-                                          Content="Включи подгрупи" VerticalAlignment="Bottom" Margin="12,0,0,4"
-                                          ToolTip="Включва и вложените подгрупи (класове) за избраното училище"
-                                          FontSize="12" Foreground="#4A5568"/>
+                        <!-- Карта 2: Обща сума ред (Формат: {0:N2} €) -->
+                        <Border Style="{StaticResource MetricCardStyle}">
+                            <StackPanel>
+                                <TextBlock Text="ОБЩА СУМА РЕДОВЕ" FontSize="11" FontWeight="Bold" Foreground="#718096"/>
+                                <TextBlock Text="{Binding DetailedKpiTotalRowSum, StringFormat='{}{0:N2} €'}" FontSize="18" FontWeight="Bold" Foreground="#107C41" Margin="0,2,0,0"/>
+                            </StackPanel>
+                        </Border>
 
-                                <!-- POS Терминал -->
-                                <StackPanel Grid.Column="3">
-                                    <TextBlock Text="POS Терминал / Обект:" FontSize="12" FontWeight="SemiBold" Foreground="#4A5568" Margin="0,0,0,4"/>
-                                    <ComboBox ItemsSource="{Binding Terminals}" 
-                                              SelectedItem="{Binding SelectedTerminal}"
-                                              DisplayMemberPath="DisplayName"
-                                              materialDesign:HintAssist.Hint="Всички терминали"
-                                              FontSize="13"/>
+                        <!-- Карта 3: Общо бонове -->
+                        <Border Style="{StaticResource MetricCardStyle}">
+                            <StackPanel>
+                                <TextBlock Text="ОБЩО БОНОВЕ" FontSize="11" FontWeight="Bold" Foreground="#718096"/>
+                                <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+                                    <TextBlock Text="{Binding DetailedKpiUniqueBonsCount, StringFormat={}{0:#,##0}}" FontSize="18" FontWeight="Bold" Foreground="#2B6CB0"/>
+                                    <TextBlock Text=" бона" FontSize="12" Foreground="#718096" VerticalAlignment="Bottom" Margin="3,0,0,2"/>
                                 </StackPanel>
-                            </Grid>
+                            </StackPanel>
+                        </Border>
 
-                            <!-- Row 2: Период (Бързи бутони + DatePickers + Времеви интервал) -->
-                            <Grid Grid.Row="2">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-
-                                <!-- Бързи бутони за период -->
-                                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                                    <TextBlock Text="Период:" FontSize="12" FontWeight="SemiBold" Foreground="#4A5568" VerticalAlignment="Center" Margin="0,0,10,0"/>
-
-                                    <Button Command="{Binding QuickPeriodCommand}" CommandParameter="Today"
-                                            Content="Днес" Style="{StaticResource MaterialDesignOutlinedButton}" 
-                                            Height="30" Padding="10,0" Margin="0,0,6,0" FontSize="11"/>
-
-                                    <Button Command="{Binding QuickPeriodCommand}" CommandParameter="Yesterday"
-                                            Content="Последен 1 ден" Style="{StaticResource MaterialDesignOutlinedButton}" 
-                                            Height="30" Padding="10,0" Margin="0,0,6,0" FontSize="11"/>
-
-                                    <Button Command="{Binding QuickPeriodCommand}" CommandParameter="10Days"
-                                            Content="10 дни" Style="{StaticResource MaterialDesignOutlinedButton}" 
-                                            Height="30" Padding="10,0" Margin="0,0,6,0" FontSize="11"/>
-
-                                    <Button Command="{Binding QuickPeriodCommand}" CommandParameter="30Days"
-                                            Content="30 дни" Style="{StaticResource MaterialDesignOutlinedButton}" 
-                                            Height="30" Padding="10,0" Margin="0,0,6,0" FontSize="11"/>
-
-                                    <Button Command="{Binding QuickPeriodCommand}" CommandParameter="50Days"
-                                            Content="50 дни" Style="{StaticResource MaterialDesignOutlinedButton}" 
-                                            Height="30" Padding="10,0" Margin="0,0,6,0" FontSize="11"/>
-
-                                    <Button Command="{Binding QuickPeriodCommand}" CommandParameter="ThisMonth"
-                                            Content="Този месец" Style="{StaticResource MaterialDesignOutlinedButton}" 
-                                            Height="30" Padding="10,0" Margin="0,0,6,0" FontSize="11"/>
+                        <!-- Карта 4: Общо записи (редове) -->
+                        <Border Style="{StaticResource MetricCardStyle}">
+                            <StackPanel>
+                                <TextBlock Text="ОБЩО ЗАПИСИ" FontSize="11" FontWeight="Bold" Foreground="#718096"/>
+                                <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+                                    <TextBlock Text="{Binding DetailedKpiTotalRowsCount, StringFormat={}{0:#,##0}}" FontSize="18" FontWeight="Bold" Foreground="#718096"/>
+                                    <TextBlock Text=" реда" FontSize="12" Foreground="#718096" VerticalAlignment="Bottom" Margin="3,0,0,2"/>
                                 </StackPanel>
+                            </StackPanel>
+                        </Border>
+                    </UniformGrid>
 
-                                <!-- Бадж с активен времеви диапазон -->
-                                <Border Grid.Column="1" Background="#EBF8FF" BorderBrush="#BEE3F8" BorderThickness="1" CornerRadius="12" 
-                                        Padding="10,4" Margin="10,0" HorizontalAlignment="Center" VerticalAlignment="Center">
-                                    <StackPanel Orientation="Horizontal">
-                                        <materialDesign:PackIcon Kind="ClockOutline" Foreground="#2B6CB0" Width="16" Height="16" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                                        <TextBlock Text="{Binding FormattedPeriodDisplay}" FontSize="12" FontWeight="SemiBold" Foreground="#2B6CB0" VerticalAlignment="Center"/>
-                                    </StackPanel>
-                                </Border>
-
-                                <!-- Ръчен избор на дати и часове (От дата/час - До дата/час) -->
-                                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                                    <TextBlock Text="От:" FontSize="12" FontWeight="SemiBold" Foreground="#4A5568" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                                    <DatePicker SelectedDate="{Binding StartDate}" Width="115" Height="32" Margin="0,0,4,0" FontSize="12"/>
-                                    <TextBox Text="{Binding StartTime}" Width="50" Height="32" VerticalContentAlignment="Center" HorizontalContentAlignment="Center"
-                                             ToolTip="Начален час (ЧЧ:ММ)" FontSize="12" FontWeight="SemiBold" Foreground="#2B6CB0" Margin="0,0,14,0"/>
-
-                                    <TextBlock Text="До:" FontSize="12" FontWeight="SemiBold" Foreground="#4A5568" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                                    <DatePicker SelectedDate="{Binding EndDate}" Width="115" Height="32" Margin="0,0,4,0" FontSize="12"/>
-                                    <TextBox Text="{Binding EndTime}" Width="50" Height="32" VerticalContentAlignment="Center" HorizontalContentAlignment="Center"
-                                             ToolTip="Краен час (ЧЧ:ММ)" FontSize="12" FontWeight="SemiBold" Foreground="#2B6CB0"/>
-                                </StackPanel>
-                            </Grid>
-
-                            <!-- Row 3: Действия и Експорт -->
-                            <DockPanel Grid.Row="4" LastChildFill="False">
-                                <!-- Бутон Генерирай -->
-                                <Button DockPanel.Dock="Left" Command="{Binding LoadDetailedReportCommand}"
-                                        Background="#1F4E79" BorderBrush="#1F4E79" Foreground="White"
-                                        Height="40" Padding="20,0" FontWeight="Bold" FontSize="13"
-                                        Style="{StaticResource MaterialDesignRaisedButton}">
-                                    <StackPanel Orientation="Horizontal">
-                                        <materialDesign:PackIcon Kind="LightningBolt" Margin="0,0,8,0" VerticalAlignment="Center"/>
-                                        <TextBlock Text="ИЗВЛЕЧИ СПРАВКА" VerticalAlignment="Center"/>
-                                    </StackPanel>
-                                </Button>
-
-                                <!-- Експорт бутони -->
-                                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                                    <Button Command="{Binding ExportDetailedExcelCommand}"
-                                            Background="#107C41" BorderBrush="#107C41" Foreground="White"
-                                            Height="36" Padding="14,0" Margin="0,0,8,0" FontSize="12"
-                                            ToolTip="Експорт на детайлните продажби по бонове в Microsoft Excel (.xlsx)"
-                                            Style="{StaticResource MaterialDesignRaisedButton}">
-                                        <StackPanel Orientation="Horizontal">
-                                            <materialDesign:PackIcon Kind="FileExcelOutline" Margin="0,0,6,0" VerticalAlignment="Center"/>
-                                            <TextBlock Text="Експорт в Excel (.xlsx)" VerticalAlignment="Center"/>
-                                        </StackPanel>
-                                    </Button>
-
-                                    <Button Command="{Binding ExportDetailedCsvCommand}"
-                                            Style="{StaticResource MaterialDesignOutlinedButton}"
-                                            BorderBrush="#718096" Foreground="#2D3748"
-                                            Height="36" Padding="12,0" Margin="0,0,8,0" FontSize="12"
-                                            ToolTip="Експорт в CSV с UTF-8 BOM и разделител точка и запетая">
-                                        <StackPanel Orientation="Horizontal">
-                                            <materialDesign:PackIcon Kind="FileDelimitedOutline" Margin="0,0,6,0" VerticalAlignment="Center"/>
-                                            <TextBlock Text="CSV" VerticalAlignment="Center"/>
-                                        </StackPanel>
-                                    </Button>
-
-                                    <Button Command="{Binding CopyDetailedClipboardCommand}"
-                                            Style="{StaticResource MaterialDesignOutlinedButton}"
-                                            BorderBrush="#718096" Foreground="#2D3748"
-                                            Height="36" Padding="12,0" FontSize="12"
-                                            ToolTip="Копиране на детайлните данни в клипборда за директно поставяне в Excel">
-                                        <StackPanel Orientation="Horizontal">
-                                            <materialDesign:PackIcon Kind="ContentCopy" Margin="0,0,6,0" VerticalAlignment="Center"/>
-                                            <TextBlock Text="Копирай" VerticalAlignment="Center"/>
-                                        </StackPanel>
-                                    </Button>
-                                </StackPanel>
-                            </DockPanel>
-                        </Grid>
-                    </Border>
-
-                    <!-- KPIs & Search -->
-                    <Grid Grid.Row="1" Margin="20,12,20,8">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="380"/>
-                        </Grid.ColumnDefinitions>
-
-                        <!-- Информационни карти (KPIs) -->
-                        <UniformGrid Grid.Column="0" Columns="4" Margin="0,0,16,0">
-                            <!-- Карта 1: Общо бройки (Количество: 0.000) -->
-                            <Border Style="{StaticResource MetricCardStyle}">
-                                <StackPanel>
-                                    <TextBlock Text="ОБЩО ПРОДАДЕНИ" FontSize="11" FontWeight="Bold" Foreground="#718096"/>
-                                    <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
-                                        <TextBlock Text="{Binding DetailedKpiTotalQuantity, StringFormat={}{0:#,##0.000}}" FontSize="18" FontWeight="Bold" Foreground="#1F4E79"/>
-                                        <TextBlock Text=" бр." FontSize="12" Foreground="#718096" VerticalAlignment="Bottom" Margin="3,0,0,2"/>
-                                    </StackPanel>
-                                </StackPanel>
-                            </Border>
-
-                            <!-- Карта 2: Обща сума ред (Сума ред: 0.00) -->
-                            <Border Style="{StaticResource MetricCardStyle}">
-                                <StackPanel>
-                                    <TextBlock Text="ОБЩА СУМА РЕДОВЕ" FontSize="11" FontWeight="Bold" Foreground="#718096"/>
-                                    <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
-                                        <TextBlock Text="{Binding DetailedKpiTotalRowSum, StringFormat={}{0:#,##0.00}}" FontSize="18" FontWeight="Bold" Foreground="#107C41"/>
-                                        <TextBlock Text=" лв." FontSize="12" Foreground="#718096" VerticalAlignment="Bottom" Margin="3,0,0,2"/>
-                                    </StackPanel>
-                                </StackPanel>
-                            </Border>
-
-                            <!-- Карта 3: Общо бонове -->
-                            <Border Style="{StaticResource MetricCardStyle}">
-                                <StackPanel>
-                                    <TextBlock Text="ОБЩО БОНОВЕ" FontSize="11" FontWeight="Bold" Foreground="#718096"/>
-                                    <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
-                                        <TextBlock Text="{Binding DetailedKpiUniqueBonsCount, StringFormat={}{0:#,##0}}" FontSize="18" FontWeight="Bold" Foreground="#2B6CB0"/>
-                                        <TextBlock Text=" бона" FontSize="12" Foreground="#718096" VerticalAlignment="Bottom" Margin="3,0,0,2"/>
-                                    </StackPanel>
-                                </StackPanel>
-                            </Border>
-
-                            <!-- Карта 4: Общо записи (редове) -->
-                            <Border Style="{StaticResource MetricCardStyle}">
-                                <StackPanel>
-                                    <TextBlock Text="ОБЩО ЗАПИСИ" FontSize="11" FontWeight="Bold" Foreground="#718096"/>
-                                    <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
-                                        <TextBlock Text="{Binding DetailedKpiTotalRowsCount, StringFormat={}{0:#,##0}}" FontSize="18" FontWeight="Bold" Foreground="#718096"/>
-                                        <TextBlock Text=" реда" FontSize="12" Foreground="#718096" VerticalAlignment="Bottom" Margin="3,0,0,2"/>
-                                    </StackPanel>
-                                </StackPanel>
-                            </Border>
-                        </UniformGrid>
-
-                        <!-- Бързо търсене (Live Search) -->
-                        <Border Grid.Column="1" Background="White" BorderBrush="#CBD5E0" BorderThickness="1" CornerRadius="8" Padding="10,4" VerticalAlignment="Center">
+                    <!-- 1: Действия и Търсене (Search Box и Експорт) -->
+                    <DockPanel Grid.Row="1" Margin="20,0,20,8" LastChildFill="False">
+                        <!-- Търсене по бон, артикул, група, терминал -->
+                        <Border DockPanel.Dock="Left" Background="White" BorderBrush="#CBD5E0" BorderThickness="1" CornerRadius="8" Padding="10,4" Width="360" VerticalAlignment="Center">
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto"/>
@@ -726,6 +570,7 @@
                                 <materialDesign:PackIcon Grid.Column="0" Kind="Magnify" Foreground="#A0AEC0" Width="20" Height="20" VerticalAlignment="Center" Margin="0,0,8,0"/>
 
                                 <TextBox Grid.Column="1" Text="{Binding DetailedSearchText, UpdateSourceTrigger=PropertyChanged}"
+                                         Foreground="#0F172A" CaretBrush="#0F172A"
                                          materialDesign:HintAssist.Hint="Търсене по бон, артикул, група, терминал..."
                                          BorderThickness="0" VerticalAlignment="Center" FontSize="13"/>
 
@@ -737,7 +582,43 @@
                                 </Button>
                             </Grid>
                         </Border>
-                    </Grid>
+
+                        <!-- Експорт бутони -->
+                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                            <Button Command="{Binding ExportDetailedExcelCommand}"
+                                    Background="#107C41" BorderBrush="#107C41" Foreground="White"
+                                    Height="36" Padding="14,0" Margin="0,0,8,0" FontSize="12"
+                                    ToolTip="Експорт на детайлните продажби по бонове в Microsoft Excel (.xlsx)"
+                                    Style="{StaticResource MaterialDesignRaisedButton}">
+                                <StackPanel Orientation="Horizontal">
+                                    <materialDesign:PackIcon Kind="FileExcelOutline" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="Експорт в Excel (.xlsx)" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+
+                            <Button Command="{Binding ExportDetailedCsvCommand}"
+                                    Style="{StaticResource MaterialDesignOutlinedButton}"
+                                    BorderBrush="#718096" Foreground="#2D3748"
+                                    Height="36" Padding="12,0" Margin="0,0,8,0" FontSize="12"
+                                    ToolTip="Експорт в CSV с UTF-8 BOM и разделител точка и запетая">
+                                <StackPanel Orientation="Horizontal">
+                                    <materialDesign:PackIcon Kind="FileDelimitedOutline" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="CSV" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+
+                            <Button Command="{Binding CopyDetailedClipboardCommand}"
+                                    Style="{StaticResource MaterialDesignOutlinedButton}"
+                                    BorderBrush="#718096" Foreground="#2D3748"
+                                    Height="36" Padding="12,0" FontSize="12"
+                                    ToolTip="Копиране на детайлните данни в клипборда за директно поставяне в Excel">
+                                <StackPanel Orientation="Horizontal">
+                                    <materialDesign:PackIcon Kind="ContentCopy" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="Копирай" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                    </DockPanel>
 
                     <!-- Detailed DataGrid -->
                     <Border Grid.Row="2" Margin="20,4,20,4" Background="White" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="8">
@@ -866,8 +747,8 @@
                                         </DataGridTextColumn.ElementStyle>
                                     </DataGridTextColumn>
 
-                                    <!-- 4. Тотал бон (Формат: 0.00) -->
-                                    <DataGridTextColumn Header="Тотал бон" Binding="{Binding BonTotal, StringFormat={}{0:#,##0.00}}" SortMemberPath="BonTotal" Width="105">
+                                    <!-- 4. Тотал бон (Формат: {0:N2} €) -->
+                                    <DataGridTextColumn Header="Тотал бон" Binding="{Binding BonTotal, StringFormat='{}{0:N2} €'}" SortMemberPath="BonTotal" Width="110">
                                         <DataGridTextColumn.ElementStyle>
                                             <Style TargetType="TextBlock">
                                                 <Setter Property="TextAlignment" Value="Right"/>
@@ -939,8 +820,8 @@
                                         </DataGridTextColumn.ElementStyle>
                                     </DataGridTextColumn>
 
-                                    <!-- 9. Ед.цена (Формат: 0.00) -->
-                                    <DataGridTextColumn Header="Ед.цена" Binding="{Binding UnitPrice, StringFormat={}{0:#,##0.00}}" SortMemberPath="UnitPrice" Width="95">
+                                    <!-- 9. Ед.цена (Формат: {0:N2} €) -->
+                                    <DataGridTextColumn Header="Ед.цена" Binding="{Binding UnitPrice, StringFormat='{}{0:N2} €'}" SortMemberPath="UnitPrice" Width="100">
                                         <DataGridTextColumn.ElementStyle>
                                             <Style TargetType="TextBlock">
                                                 <Setter Property="TextAlignment" Value="Right"/>
@@ -951,8 +832,8 @@
                                         </DataGridTextColumn.ElementStyle>
                                     </DataGridTextColumn>
 
-                                    <!-- 10. Сума ред (Формат: 0.00) -->
-                                    <DataGridTextColumn Header="Сума ред" Binding="{Binding RowTotal, StringFormat={}{0:#,##0.00}}" SortMemberPath="RowTotal" Width="110">
+                                    <!-- 10. Сума ред (Формат: {0:N2} €) -->
+                                    <DataGridTextColumn Header="Сума ред" Binding="{Binding RowTotal, StringFormat='{}{0:N2} €'}" SortMemberPath="RowTotal" Width="115">
                                         <DataGridTextColumn.ElementStyle>
                                             <Style TargetType="TextBlock">
                                                 <Setter Property="TextAlignment" Value="Right"/>
@@ -979,7 +860,7 @@
                                 <TextBlock Text="):" FontWeight="Bold" FontSize="13" Foreground="#2B6CB0" VerticalAlignment="Center" Margin="0,0,4,0"/>
                                 <TextBlock Text="{Binding DetailedKpiTotalQuantity, StringFormat=' {0:#,##0.000} бр.'}" FontWeight="Bold" FontSize="14" Foreground="#1F4E79" VerticalAlignment="Center"/>
                                 <TextBlock Text=" · " Foreground="#A0AEC0" VerticalAlignment="Center"/>
-                                <TextBlock Text="{Binding DetailedKpiTotalRowSum, StringFormat=' {0:#,##0.00} лв.'}" FontWeight="Bold" FontSize="14" Foreground="#107C41" VerticalAlignment="Center"/>
+                                <TextBlock Text="{Binding DetailedKpiTotalRowSum, StringFormat=' {0:N2} €'}" FontWeight="Bold" FontSize="14" Foreground="#107C41" VerticalAlignment="Center"/>
                                 <TextBlock Text=" · " Foreground="#A0AEC0" VerticalAlignment="Center"/>
                                 <TextBlock Text="{Binding DetailedKpiUniqueBonsCount, StringFormat='{}{0} бона'}" Foreground="#4A5568" VerticalAlignment="Center"/>
                                 <TextBlock Text=" (" Foreground="#A0AEC0" VerticalAlignment="Center"/>
@@ -989,7 +870,7 @@
 
                             <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" VerticalAlignment="Center">
                                 <TextBlock Text="Общ оборот по бонове: " FontSize="12" Foreground="#718096" VerticalAlignment="Center"/>
-                                <TextBlock Text="{Binding DetailedKpiTotalBonSum, StringFormat='{}{0:#,##0.00} лв.'}" FontSize="13" FontWeight="Bold" Foreground="#2D3748" VerticalAlignment="Center"/>
+                                <TextBlock Text="{Binding DetailedKpiTotalBonSum, StringFormat='{}{0:N2} €'}" FontSize="13" FontWeight="Bold" Foreground="#2D3748" VerticalAlignment="Center"/>
                             </StackPanel>
                         </DockPanel>
                     </Border>
@@ -997,8 +878,8 @@
             </TabItem>
         </TabControl>
 
-        <!-- =================== 2. STATUS BAR =================== -->
-        <Border Grid.Row="2" Background="#EDF2F7" BorderBrush="#E2E8F0" BorderThickness="0,1,0,0" Padding="14,6">
+        <!-- =================== 3. STATUS BAR =================== -->
+        <Border Grid.Row="3" Background="#EDF2F7" BorderBrush="#E2E8F0" BorderThickness="0,1,0,0" Padding="14,6">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>

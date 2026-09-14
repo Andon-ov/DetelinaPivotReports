@@ -38,7 +38,6 @@ public class MainViewModel : ViewModelBase
     private DateTime _endDate = DateTime.Today;
     private string _startTime = "00:00";
     private string _endTime = "23:59";
-    private bool _includeSubgroups = true;
     private bool _hideEmptyDays = false;
     private string _searchText = string.Empty;
 
@@ -167,12 +166,6 @@ public class MainViewModel : ViewModelBase
             }
             return $"{StartDate:dd.MM.yyyy} {StartTime} — {EndDate:dd.MM.yyyy} {EndTime}";
         }
-    }
-
-    public bool IncludeSubgroups
-    {
-        get => _includeSubgroups;
-        set => SetProperty(ref _includeSubgroups, value);
     }
 
     public bool HideEmptyDays
@@ -333,6 +326,9 @@ public class MainViewModel : ViewModelBase
 
     #region Commands
 
+    // Обща команда за зареждане на текущата активна справка от горния панел
+    public ICommand LoadActiveReportCommand { get; }
+
     public ICommand LoadReportCommand { get; }
     public ICommand QuickPeriodCommand { get; }
     public ICommand ExportExcelCommand { get; }
@@ -362,11 +358,13 @@ public class MainViewModel : ViewModelBase
         _pivotReportService = pivotReportService;
         _exportService = exportService;
 
-        _includeSubgroups = _configService.IncludeSubgroupsDefault;
         _hideEmptyDays = _configService.HideEmptyDaysDefault;
 
         // Начален период
         ApplyPeriodPreset(_configService.DefaultPeriodPreset);
+
+        // Обща команда за извличане
+        LoadActiveReportCommand = new RelayCommand(async () => await LoadActiveReportAsync(), () => !IsLoading);
 
         // Инициализация на команди - Справка 1
         LoadReportCommand = new RelayCommand(async () => await LoadReportAsync(), () => !IsLoading);
@@ -428,6 +426,21 @@ public class MainViewModel : ViewModelBase
         }
     }
 
+    /// <summary>
+    /// Извлича справката за текущо избрания таб (0: Матрична справка, 1: Детайлна справка)
+    /// </summary>
+    public async Task LoadActiveReportAsync()
+    {
+        if (SelectedReportIndex == 1)
+        {
+            await LoadDetailedReportAsync();
+        }
+        else
+        {
+            await LoadReportAsync();
+        }
+    }
+
     public async Task LoadReportAsync()
     {
         if (StartDate > EndDate)
@@ -446,8 +459,7 @@ public class MainViewModel : ViewModelBase
             var filter = new ReportFilter
             {
                 GroupId = SelectedPlugroup?.Id ?? 0,
-                GroupName = SelectedPlugroup?.Name ?? "Всички групи",
-                IncludeSubgroups = IncludeSubgroups,
+                GroupName = SelectedPlugroup?.Name ?? "[Всички училища]",
                 TerminalId = SelectedTerminal?.Id ?? 0,
                 TerminalName = SelectedTerminal?.DisplayName ?? "Всички терминали",
                 StartDate = StartDate,
@@ -457,12 +469,6 @@ public class MainViewModel : ViewModelBase
                 HideEmptyDays = HideEmptyDays,
                 SearchText = SearchText
             };
-
-            // При избор на конкретна група и включени подгрупи, извличаме всички потомствени ID-та
-            if (filter.GroupId > 0 && filter.IncludeSubgroups)
-            {
-                filter.GroupIds = _pivotReportService.GetGroupAndDescendantIds(filter.GroupId, Plugroups);
-            }
 
             // Извличане на записите от Firebird
             var records = await _firebirdService.GetSalesRecordsAsync(_configService.DatabaseSettings, filter);
@@ -671,8 +677,7 @@ public class MainViewModel : ViewModelBase
             var filter = new ReportFilter
             {
                 GroupId = SelectedPlugroup?.Id ?? 0,
-                GroupName = SelectedPlugroup?.Name ?? "Всички групи",
-                IncludeSubgroups = IncludeSubgroups,
+                GroupName = SelectedPlugroup?.Name ?? "[Всички училища]",
                 TerminalId = SelectedTerminal?.Id ?? 0,
                 TerminalName = SelectedTerminal?.DisplayName ?? "Всички терминали",
                 StartDate = StartDate,
@@ -680,11 +685,6 @@ public class MainViewModel : ViewModelBase
                 StartTime = ParseTime(StartTime, new TimeSpan(0, 0, 0), isEndOfDay: false),
                 EndTime = ParseTime(EndTime, new TimeSpan(23, 59, 59), isEndOfDay: true)
             };
-
-            if (filter.GroupId > 0 && filter.IncludeSubgroups)
-            {
-                filter.GroupIds = _pivotReportService.GetGroupAndDescendantIds(filter.GroupId, Plugroups);
-            }
 
             var records = await _firebirdService.GetDetailedSalesRecordsAsync(_configService.DatabaseSettings, filter);
             ProcessReceiptGrouping(records);
@@ -698,7 +698,7 @@ public class MainViewModel : ViewModelBase
             UpdateDetailedKpis();
             sw.Stop();
 
-            StatusMessage = $"Детайлната справка е генерирана за {sw.Elapsed.TotalSeconds:F2} сек. Намерени {records.Count:N0} записа, {DetailedKpiUniqueBonsCount:N0} бона, общо {DetailedKpiTotalQuantity:#,##0.000} бр., сума {DetailedKpiTotalRowSum:#,##0.00} лв.";
+            StatusMessage = $"Детайлната справка е генерирана за {sw.Elapsed.TotalSeconds:F2} сек. Намерени {records.Count:N0} записа, {DetailedKpiUniqueBonsCount:N0} бона, общо {DetailedKpiTotalQuantity:#,##0.000} бр., сума {DetailedKpiTotalRowSum:N2} €";
         }
         catch (Exception ex)
         {
@@ -814,7 +814,7 @@ public class MainViewModel : ViewModelBase
         var filter = new ReportFilter
         {
             GroupId = SelectedPlugroup?.Id ?? 0,
-            GroupName = SelectedPlugroup?.Name ?? "Всички групи",
+            GroupName = SelectedPlugroup?.Name ?? "[Всички училища]",
             TerminalId = SelectedTerminal?.Id ?? 0,
             TerminalName = SelectedTerminal?.DisplayName ?? "Всички терминали",
             StartDate = StartDate,
@@ -868,7 +868,7 @@ public class MainViewModel : ViewModelBase
         var filter = new ReportFilter
         {
             GroupId = SelectedPlugroup?.Id ?? 0,
-            GroupName = SelectedPlugroup?.Name ?? "Всички групи",
+            GroupName = SelectedPlugroup?.Name ?? "[Всички училища]",
             TerminalId = SelectedTerminal?.Id ?? 0,
             TerminalName = SelectedTerminal?.DisplayName ?? "Всички терминали",
             StartDate = StartDate,

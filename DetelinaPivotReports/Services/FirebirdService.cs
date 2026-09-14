@@ -89,10 +89,10 @@ public class FirebirdService : IFirebirdService
             return new List<PlugroupItem> { PlugroupItem.CreateAllGroupsOption() };
         }
 
-        // Подреждане по йерархия
-        var organizedList = OrganizeHierarchy(rawList);
-        organizedList.Insert(0, PlugroupItem.CreateAllGroupsOption());
-        return organizedList;
+        // Подреждане по азбучен ред (линейна номенклатура на училищата)
+        var list = rawList.OrderBy(x => x.Name).ToList();
+        list.Insert(0, PlugroupItem.CreateAllGroupsOption());
+        return list;
     }
 
     public async Task<List<TerminalItem>> GetTerminalsAsync(DatabaseSettings settings, Dictionary<string, string> terminalNames, CancellationToken ct = default)
@@ -186,22 +186,8 @@ public class FirebirdService : IFirebirdService
         // Филтър по група / училище
         if (filter.GroupId > 0)
         {
-            if (filter.IncludeSubgroups && filter.GroupIds.Count > 0)
-            {
-                var paramNames = new List<string>();
-                for (int i = 0; i < filter.GroupIds.Count; i++)
-                {
-                    string pName = $"@grp_{i}";
-                    paramNames.Add(pName);
-                    cmd.Parameters.Add(new FbParameter(pName, FbDbType.Integer) { Value = filter.GroupIds[i] });
-                }
-                sqlBuilder.AppendLine($"  AND P.PLU_GROUP_ID IN ({string.Join(", ", paramNames)})");
-            }
-            else
-            {
-                sqlBuilder.AppendLine("  AND P.PLU_GROUP_ID = @SelectedGroupId");
-                cmd.Parameters.Add(new FbParameter("@SelectedGroupId", FbDbType.Integer) { Value = filter.GroupId });
-            }
+            sqlBuilder.AppendLine("  AND P.PLU_GROUP_ID = @SelectedGroupId");
+            cmd.Parameters.Add(new FbParameter("@SelectedGroupId", FbDbType.Integer) { Value = filter.GroupId });
         }
 
         sqlBuilder.AppendLine(@"
@@ -296,22 +282,8 @@ public class FirebirdService : IFirebirdService
         // Филтър по група / училище
         if (filter.GroupId > 0)
         {
-            if (filter.IncludeSubgroups && filter.GroupIds.Count > 0)
-            {
-                var paramNames = new List<string>();
-                for (int i = 0; i < filter.GroupIds.Count; i++)
-                {
-                    string pName = $"@grp_{i}";
-                    paramNames.Add(pName);
-                    cmd.Parameters.Add(new FbParameter(pName, FbDbType.Integer) { Value = filter.GroupIds[i] });
-                }
-                sqlBuilder.AppendLine($"  AND P.PLU_GROUP_ID IN ({string.Join(", ", paramNames)})");
-            }
-            else
-            {
-                sqlBuilder.AppendLine("  AND P.PLU_GROUP_ID = @SelectedGroupId");
-                cmd.Parameters.Add(new FbParameter("@SelectedGroupId", FbDbType.Integer) { Value = filter.GroupId });
-            }
+            sqlBuilder.AppendLine("  AND P.PLU_GROUP_ID = @SelectedGroupId");
+            cmd.Parameters.Add(new FbParameter("@SelectedGroupId", FbDbType.Integer) { Value = filter.GroupId });
         }
 
         sqlBuilder.AppendLine("ORDER BY SB.SELL_DATETIME, SB.SELL_TERMINAL, SB.SELL_BONNUMB, SP.SPLU_PLUNUMB");
@@ -355,47 +327,5 @@ public class FirebirdService : IFirebirdService
         }
 
         return results;
-    }
-
-    private static List<PlugroupItem> OrganizeHierarchy(List<PlugroupItem> rawList)
-    {
-        var result = new List<PlugroupItem>();
-        var lookup = rawList.GroupBy(g => g.ParentId).ToDictionary(g => g.Key, g => g.OrderBy(x => x.Name).ToList());
-
-        void AddChildren(int parentId, int level)
-        {
-            if (lookup.TryGetValue(parentId, out var children))
-            {
-                foreach (var child in children)
-                {
-                    child.Level = level;
-                    result.Add(child);
-                    AddChildren(child.Id, level + 1);
-                }
-            }
-        }
-
-        // Коренови групи (ParentId <= 0 или ParentId липсва в rawList)
-        var allIds = new HashSet<int>(rawList.Select(x => x.Id));
-        var rootGroups = rawList
-            .Where(x => x.ParentId <= 0 || !allIds.Contains(x.ParentId))
-            .OrderBy(x => x.Name)
-            .ToList();
-
-        foreach (var root in rootGroups)
-        {
-            root.Level = 0;
-            result.Add(root);
-            AddChildren(root.Id, 1);
-        }
-
-        // Ако има останали неотчетени групи
-        var processedIds = new HashSet<int>(result.Select(x => x.Id));
-        foreach (var item in rawList.Where(x => !processedIds.Contains(x.Id)))
-        {
-            result.Add(item);
-        }
-
-        return result;
     }
 }

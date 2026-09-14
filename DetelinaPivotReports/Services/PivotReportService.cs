@@ -132,33 +132,4 @@ public class PivotReportService : IPivotReportService
 
         return result;
     }
-
-    public List<int> GetGroupAndDescendantIds(int rootGroupId, IEnumerable<PlugroupItem> allGroups)
-    {
-        var result = new HashSet<int> { rootGroupId };
-        var queue = new Queue<int>();
-        queue.Enqueue(rootGroupId);
-
-        var lookup = allGroups
-            .Where(g => !g.IsAllGroups)
-            .GroupBy(g => g.ParentId)
-            .ToDictionary(g => g.Key, g => g.ToList());
-
-        while (queue.Count > 0)
-        {
-            var current = queue.Dequeue();
-            if (lookup.TryGetValue(current, out var children))
-            {
-                foreach (var child in children)
-                {
-                    if (result.Add(child.Id))
-                    {
-                        queue.Enqueue(child.Id);
-                    }
-                }
-            }
-        }
-
-        return result.ToList();
-    }
 }

@@ -14,7 +14,6 @@ public class ConfigService : IConfigService
     public DatabaseSettings DatabaseSettings { get; private set; } = new();
     public Dictionary<string, string> TerminalNames { get; private set; } = new();
     public bool HideEmptyDaysDefault { get; private set; } = false;
-    public bool IncludeSubgroupsDefault { get; private set; } = true;
     public string DefaultPeriodPreset { get; private set; } = "ThisMonth";
 
     public ConfigService(string? configPath = null)
@@ -55,7 +54,6 @@ public class ConfigService : IConfigService
             {
                 DefaultPeriodPreset = repElement.TryGetProperty("DefaultPeriod", out var dp) ? dp.GetString() ?? "ThisMonth" : "ThisMonth";
                 HideEmptyDaysDefault = repElement.TryGetProperty("HideEmptyDays", out var hed) && hed.GetBoolean();
-                IncludeSubgroupsDefault = !repElement.TryGetProperty("IncludeSubgroups", out var isg) || isg.GetBoolean();
 
                 if (repElement.TryGetProperty("TerminalNames", out var tnElement) && tnElement.ValueKind == JsonValueKind.Object)
                 {
@@ -73,7 +71,6 @@ public class ConfigService : IConfigService
             DatabaseSettings = new DatabaseSettings();
             DefaultPeriodPreset = "ThisMonth";
             HideEmptyDaysDefault = false;
-            IncludeSubgroupsDefault = true;
         }
     }
 
@@ -112,7 +109,6 @@ public class ConfigService : IConfigService
                 {
                     ["DefaultPeriod"] = DefaultPeriodPreset,
                     ["HideEmptyDays"] = HideEmptyDaysDefault,
-                    ["IncludeSubgroups"] = IncludeSubgroupsDefault,
                     ["TerminalNames"] = new JsonObject
                     {
                         ["1"] = "Слънчев бряг (Пос 1)",

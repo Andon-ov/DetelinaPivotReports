@@ -9,9 +9,7 @@ namespace DetelinaPivotReports.Models;
 public class ReportFilter
 {
     public int GroupId { get; set; } = 0;
-    public string GroupName { get; set; } = "Всички училища и групи";
-    public List<int> GroupIds { get; set; } = new();
-    public bool IncludeSubgroups { get; set; } = true;
+    public string GroupName { get; set; } = "[Всички училища]";
 
     public int TerminalId { get; set; } = 0;
     public string TerminalName { get; set; } = "Всички терминали";

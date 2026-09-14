@@ -13,24 +13,16 @@ public class PlugroupItem
 
     public bool IsAllGroups => Id == 0;
 
-    public string DisplayName
-    {
-        get
-        {
-            if (IsAllGroups) return "— Всички училища и групи —";
-            string indent = Level > 0 ? new string(' ', Level * 3) + "↳ " : string.Empty;
-            return Code > 0 ? $"{indent}[{Code}] {Name}" : $"{indent}{Name}";
-        }
-    }
+    public string DisplayName => Name;
 
-    public override string ToString() => DisplayName;
+    public override string ToString() => Name;
 
     public static PlugroupItem CreateAllGroupsOption()
     {
         return new PlugroupItem
         {
             Id = 0,
-            Name = "— Всички училища и групи —",
+            Name = "[Всички училища]",
             ParentId = -1,
             Code = 0,
             Level = 0
