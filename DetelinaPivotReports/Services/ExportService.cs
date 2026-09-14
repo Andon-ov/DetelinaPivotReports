@@ -309,33 +309,38 @@ public class ExportService : IExportService
                 totalQuantity += r.Quantity;
                 totalRowSum += r.RowTotal;
 
-                // 1. Терминал (само на 1-вия ред от бона)
-                ws.Cell(currentRow, 1).Value = r.IsFirstInReceipt ? r.TerminalName : string.Empty;
+                // 1. Терминал
+                ws.Cell(currentRow, 1).Value = r.TerminalName;
                 ws.Cell(currentRow, 1).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
 
-                // 2. Бон No (само на 1-вия ред от бона)
-                if (r.IsFirstInReceipt)
-                {
-                    ws.Cell(currentRow, 2).Value = r.BonNumber;
-                }
+                // 2. Бон No
+                ws.Cell(currentRow, 2).Value = r.BonNumber;
                 ws.Cell(currentRow, 2).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
 
-                // 3. Дата/Час (само на 1-вия ред от бона)
-                ws.Cell(currentRow, 3).Value = r.IsFirstInReceipt ? r.SaleDateTime.ToString("dd.MM.yyyy HH:mm:ss") : string.Empty;
+                // 3. Дата/Час
+                ws.Cell(currentRow, 3).Value = r.SaleDateTime.ToString("dd.MM.yyyy HH:mm:ss");
                 ws.Cell(currentRow, 3).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
 
-                // 4. Тотал бон (само на 1-вия ред от бона)
+                // 4. Тотал бон
                 var cellBonTot = ws.Cell(currentRow, 4);
-                if (r.IsFirstInReceipt)
-                {
-                    cellBonTot.Value = r.BonTotal;
-                    cellBonTot.Style.NumberFormat.Format = "#,##0.00";
-                }
+                cellBonTot.Value = r.BonTotal;
+                cellBonTot.Style.NumberFormat.Format = "#,##0.00";
                 cellBonTot.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Right;
 
-                // 5. Арт.група (само на 1-вия ред от бона)
-                ws.Cell(currentRow, 5).Value = r.IsFirstInReceipt ? r.GroupName : string.Empty;
+                // 5. Арт.група
+                ws.Cell(currentRow, 5).Value = r.GroupName;
                 ws.Cell(currentRow, 5).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Left;
+
+                // Дискретен цвят за повторните редове от същия бон
+                if (!r.IsFirstInReceipt)
+                {
+                    var faintColor = XLColor.FromHtml("#718096");
+                    ws.Cell(currentRow, 1).Style.Font.FontColor = faintColor;
+                    ws.Cell(currentRow, 2).Style.Font.FontColor = faintColor;
+                    ws.Cell(currentRow, 3).Style.Font.FontColor = faintColor;
+                    ws.Cell(currentRow, 4).Style.Font.FontColor = faintColor;
+                    ws.Cell(currentRow, 5).Style.Font.FontColor = faintColor;
+                }
 
                 // 6. Арт.No
                 ws.Cell(currentRow, 6).Value = r.PluNumber;
@@ -441,11 +446,11 @@ public class ExportService : IExportService
 
             var cols = new List<string>
             {
-                $"\"{(r.IsFirstInReceipt ? r.TerminalName.Replace("\"", "\"\"") : string.Empty)}\"",
-                r.IsFirstInReceipt ? r.BonNumber.ToString() : string.Empty,
-                r.IsFirstInReceipt ? r.SaleDateTime.ToString("dd.MM.yyyy HH:mm:ss") : string.Empty,
-                r.IsFirstInReceipt ? r.BonTotal.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) : string.Empty,
-                $"\"{(r.IsFirstInReceipt ? r.GroupName.Replace("\"", "\"\"") : string.Empty)}\"",
+                $"\"{r.TerminalName.Replace("\"", "\"\"")}\"",
+                r.BonNumber.ToString(),
+                r.SaleDateTime.ToString("dd.MM.yyyy HH:mm:ss"),
+                r.BonTotal.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture),
+                $"\"{r.GroupName.Replace("\"", "\"\"")}\"",
                 r.PluNumber.ToString(),
                 $"\"{r.ArticleName.Replace("\"", "\"\"")}\"",
                 r.Quantity.ToString("0.000", System.Globalization.CultureInfo.InvariantCulture),
@@ -477,11 +482,11 @@ public class ExportService : IExportService
 
             var cols = new List<string>
             {
-                r.DisplayTerminal,
-                r.DisplayBonNumber,
-                r.DisplaySaleDateTime,
-                r.DisplayBonTotal,
-                r.DisplayGroupName,
+                r.TerminalName,
+                r.BonNumber.ToString(),
+                r.SaleDateTime.ToString("dd.MM.yyyy HH:mm:ss"),
+                r.BonTotal.ToString("0.00"),
+                r.GroupName,
                 r.PluNumber.ToString(),
                 r.ArticleName,
                 r.Quantity.ToString("0.000"),

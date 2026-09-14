@@ -597,13 +597,13 @@
                                 <!-- Ръчен избор на дати и часове (От дата/час - До дата/час) -->
                                 <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
                                     <TextBlock Text="От:" FontSize="12" FontWeight="SemiBold" Foreground="#4A5568" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                                    <DatePicker SelectedDate="{Binding StartDate, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="115" Height="32" Margin="0,0,4,0" FontSize="12"/>
-                                    <TextBox Text="{Binding StartTime, UpdateSourceTrigger=PropertyChanged}" Width="50" Height="32" VerticalContentAlignment="Center" HorizontalContentAlignment="Center"
+                                    <DatePicker SelectedDate="{Binding StartDate}" Width="115" Height="32" Margin="0,0,4,0" FontSize="12"/>
+                                    <TextBox Text="{Binding StartTime}" Width="50" Height="32" VerticalContentAlignment="Center" HorizontalContentAlignment="Center"
                                              ToolTip="Начален час (ЧЧ:ММ)" FontSize="12" FontWeight="SemiBold" Foreground="#2B6CB0" Margin="0,0,14,0"/>
 
                                     <TextBlock Text="До:" FontSize="12" FontWeight="SemiBold" Foreground="#4A5568" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                                    <DatePicker SelectedDate="{Binding EndDate, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="115" Height="32" Margin="0,0,4,0" FontSize="12"/>
-                                    <TextBox Text="{Binding EndTime, UpdateSourceTrigger=PropertyChanged}" Width="50" Height="32" VerticalContentAlignment="Center" HorizontalContentAlignment="Center"
+                                    <DatePicker SelectedDate="{Binding EndDate}" Width="115" Height="32" Margin="0,0,4,0" FontSize="12"/>
+                                    <TextBox Text="{Binding EndTime}" Width="50" Height="32" VerticalContentAlignment="Center" HorizontalContentAlignment="Center"
                                              ToolTip="Краен час (ЧЧ:ММ)" FontSize="12" FontWeight="SemiBold" Foreground="#2B6CB0"/>
                                 </StackPanel>
                             </Grid>
@@ -794,6 +794,9 @@
                                                 <Setter Property="BorderThickness" Value="0,0,0,2"/>
                                                 <Setter Property="BorderBrush" Value="#A0AEC0"/>
                                             </DataTrigger>
+                                            <Trigger Property="IsSelected" Value="True">
+                                                <Setter Property="Background" Value="#E2E8F0"/>
+                                            </Trigger>
                                         </Style.Triggers>
                                     </Style>
                                 </DataGrid.RowStyle>
@@ -811,43 +814,60 @@
                                 </DataGrid.ColumnHeaderStyle>
 
                                 <DataGrid.Columns>
-                                    <!-- 1. Терминал (показва се само на 1-вия ред от бона) -->
-                                    <DataGridTextColumn Header="Терминал" Binding="{Binding DisplayTerminal}" SortMemberPath="TerminalName" Width="140">
+                                    <!-- 1. Терминал -->
+                                    <DataGridTextColumn Header="Терминал" Binding="{Binding TerminalName}" SortMemberPath="TerminalName" Width="140">
                                         <DataGridTextColumn.ElementStyle>
                                             <Style TargetType="TextBlock">
                                                 <Setter Property="TextAlignment" Value="Center"/>
                                                 <Setter Property="VerticalAlignment" Value="Center"/>
                                                 <Setter Property="FontWeight" Value="SemiBold"/>
                                                 <Setter Property="Foreground" Value="#4A5568"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsFirstInReceipt}" Value="False">
+                                                        <Setter Property="Foreground" Value="#A0AEC0"/>
+                                                        <Setter Property="FontWeight" Value="Normal"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
                                             </Style>
                                         </DataGridTextColumn.ElementStyle>
                                     </DataGridTextColumn>
 
-                                    <!-- 2. Бон No (показва се само на 1-вия ред от бона) -->
-                                    <DataGridTextColumn Header="Бон No" Binding="{Binding DisplayBonNumber}" SortMemberPath="BonNumber" Width="95">
+                                    <!-- 2. Бон No -->
+                                    <DataGridTextColumn Header="Бон No" Binding="{Binding BonNumber}" SortMemberPath="BonNumber" Width="95">
                                         <DataGridTextColumn.ElementStyle>
                                             <Style TargetType="TextBlock">
                                                 <Setter Property="TextAlignment" Value="Center"/>
                                                 <Setter Property="VerticalAlignment" Value="Center"/>
                                                 <Setter Property="FontWeight" Value="SemiBold"/>
                                                 <Setter Property="Foreground" Value="#2B6CB0"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsFirstInReceipt}" Value="False">
+                                                        <Setter Property="Foreground" Value="#A0AEC0"/>
+                                                        <Setter Property="FontWeight" Value="Normal"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
                                             </Style>
                                         </DataGridTextColumn.ElementStyle>
                                     </DataGridTextColumn>
 
-                                    <!-- 3. Дата/Час (показва се само на 1-вия ред от бона) -->
-                                    <DataGridTextColumn Header="Дата/Час" Binding="{Binding DisplaySaleDateTime}" SortMemberPath="SaleDateTime" Width="145">
+                                    <!-- 3. Дата/Час -->
+                                    <DataGridTextColumn Header="Дата/Час" Binding="{Binding SaleDateTime, StringFormat={}{0:dd.MM.yyyy HH:mm:ss}}" SortMemberPath="SaleDateTime" Width="145">
                                         <DataGridTextColumn.ElementStyle>
                                             <Style TargetType="TextBlock">
                                                 <Setter Property="TextAlignment" Value="Center"/>
                                                 <Setter Property="VerticalAlignment" Value="Center"/>
                                                 <Setter Property="Foreground" Value="#4A5568"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsFirstInReceipt}" Value="False">
+                                                        <Setter Property="Foreground" Value="#A0AEC0"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
                                             </Style>
                                         </DataGridTextColumn.ElementStyle>
                                     </DataGridTextColumn>
 
-                                    <!-- 4. Тотал бон (показва се само на 1-вия ред от бона, Формат: 0.00) -->
-                                    <DataGridTextColumn Header="Тотал бон" Binding="{Binding DisplayBonTotal}" SortMemberPath="BonTotal" Width="105">
+                                    <!-- 4. Тотал бон (Формат: 0.00) -->
+                                    <DataGridTextColumn Header="Тотал бон" Binding="{Binding BonTotal, StringFormat={}{0:#,##0.00}}" SortMemberPath="BonTotal" Width="105">
                                         <DataGridTextColumn.ElementStyle>
                                             <Style TargetType="TextBlock">
                                                 <Setter Property="TextAlignment" Value="Right"/>
@@ -855,18 +875,29 @@
                                                 <Setter Property="FontWeight" Value="Bold"/>
                                                 <Setter Property="Margin" Value="0,0,8,0"/>
                                                 <Setter Property="Foreground" Value="#2D3748"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsFirstInReceipt}" Value="False">
+                                                        <Setter Property="Foreground" Value="#A0AEC0"/>
+                                                        <Setter Property="FontWeight" Value="Normal"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
                                             </Style>
                                         </DataGridTextColumn.ElementStyle>
                                     </DataGridTextColumn>
 
-                                    <!-- 5. Арт.група (показва се само на 1-вия ред от бона) -->
-                                    <DataGridTextColumn Header="Арт.група" Binding="{Binding DisplayGroupName}" SortMemberPath="GroupName" Width="150">
+                                    <!-- 5. Арт.група -->
+                                    <DataGridTextColumn Header="Арт.група" Binding="{Binding GroupName}" SortMemberPath="GroupName" Width="150">
                                         <DataGridTextColumn.ElementStyle>
                                             <Style TargetType="TextBlock">
                                                 <Setter Property="TextAlignment" Value="Left"/>
                                                 <Setter Property="VerticalAlignment" Value="Center"/>
                                                 <Setter Property="Margin" Value="6,0,0,0"/>
                                                 <Setter Property="Foreground" Value="#4A5568"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsFirstInReceipt}" Value="False">
+                                                        <Setter Property="Foreground" Value="#A0AEC0"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
                                             </Style>
                                         </DataGridTextColumn.ElementStyle>
                                     </DataGridTextColumn>

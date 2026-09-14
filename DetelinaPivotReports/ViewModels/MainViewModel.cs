@@ -452,8 +452,8 @@ public class MainViewModel : ViewModelBase
                 TerminalName = SelectedTerminal?.DisplayName ?? "Всички терминали",
                 StartDate = StartDate,
                 EndDate = EndDate,
-                StartTime = ParseTime(StartTime, new TimeSpan(0, 0, 0)),
-                EndTime = ParseTime(EndTime, new TimeSpan(23, 59, 59)),
+                StartTime = new TimeSpan(0, 0, 0),
+                EndTime = new TimeSpan(23, 59, 59),
                 HideEmptyDays = HideEmptyDays,
                 SearchText = SearchText
             };
@@ -677,8 +677,8 @@ public class MainViewModel : ViewModelBase
                 TerminalName = SelectedTerminal?.DisplayName ?? "Всички терминали",
                 StartDate = StartDate,
                 EndDate = EndDate,
-                StartTime = ParseTime(StartTime, new TimeSpan(0, 0, 0)),
-                EndTime = ParseTime(EndTime, new TimeSpan(23, 59, 59))
+                StartTime = ParseTime(StartTime, new TimeSpan(0, 0, 0), isEndOfDay: false),
+                EndTime = ParseTime(EndTime, new TimeSpan(23, 59, 59), isEndOfDay: true)
             };
 
             if (filter.GroupId > 0 && filter.IncludeSubgroups)
@@ -780,10 +780,28 @@ public class MainViewModel : ViewModelBase
         }
     }
 
-    private static TimeSpan ParseTime(string timeStr, TimeSpan fallback)
+    public static TimeSpan ParseTime(string? timeStr, TimeSpan fallback, bool isEndOfDay = false)
     {
-        if (TimeSpan.TryParse(timeStr, out var ts))
+        if (string.IsNullOrWhiteSpace(timeStr))
+            return fallback;
+
+        timeStr = timeStr!.Trim().Replace('.', ':');
+
+        // Ако е въведен само час (напр. "8" или "14"), го тълкуваме като час, а не като дни
+        if (int.TryParse(timeStr, out int hour) && hour >= 0 && hour <= 23)
+        {
+            return isEndOfDay ? new TimeSpan(hour, 59, 59) : new TimeSpan(hour, 0, 0);
+        }
+
+        if (TimeSpan.TryParse(timeStr, System.Globalization.CultureInfo.InvariantCulture, out var ts))
+        {
+            if (isEndOfDay && ts.Seconds == 0 && ts.TotalHours < 24)
+            {
+                return new TimeSpan(ts.Hours, ts.Minutes, 59);
+            }
             return ts;
+        }
+
         return fallback;
     }
 
@@ -801,8 +819,8 @@ public class MainViewModel : ViewModelBase
             TerminalName = SelectedTerminal?.DisplayName ?? "Всички терминали",
             StartDate = StartDate,
             EndDate = EndDate,
-            StartTime = ParseTime(StartTime, new TimeSpan(0, 0, 0)),
-            EndTime = ParseTime(EndTime, new TimeSpan(23, 59, 59))
+            StartTime = ParseTime(StartTime, new TimeSpan(0, 0, 0), isEndOfDay: false),
+            EndTime = ParseTime(EndTime, new TimeSpan(23, 59, 59), isEndOfDay: true)
         };
 
         var sfd = new SaveFileDialog
@@ -855,8 +873,8 @@ public class MainViewModel : ViewModelBase
             TerminalName = SelectedTerminal?.DisplayName ?? "Всички терминали",
             StartDate = StartDate,
             EndDate = EndDate,
-            StartTime = ParseTime(StartTime, new TimeSpan(0, 0, 0)),
-            EndTime = ParseTime(EndTime, new TimeSpan(23, 59, 59))
+            StartTime = ParseTime(StartTime, new TimeSpan(0, 0, 0), isEndOfDay: false),
+            EndTime = ParseTime(EndTime, new TimeSpan(23, 59, 59), isEndOfDay: true)
         };
 
         var sfd = new SaveFileDialog

@@ -169,9 +169,9 @@ public class FirebirdService : IFirebirdService
         using var cmd = new FbCommand();
         cmd.Connection = conn;
 
-        // Параметри за дати и час (начало: 00:00:00, край: 23:59:59 или избран времеви интервал)
-        DateTime startDt = filter.EffectiveStartDateTime;
-        DateTime endDt = filter.EffectiveEndDateTime;
+        // За Справка 1 (Матрица униформи) периодът винаги обхваща пълните дни от 00:00:00 до 23:59:59
+        DateTime startDt = filter.StartDate.Date;
+        DateTime endDt = filter.EndDate.Date.AddDays(1).AddSeconds(-1);
 
         cmd.Parameters.Add(new FbParameter("@StartDate", FbDbType.TimeStamp) { Value = startDt });
         cmd.Parameters.Add(new FbParameter("@EndDate", FbDbType.TimeStamp) { Value = endDt });
@@ -276,6 +276,12 @@ public class FirebirdService : IFirebirdService
 
         DateTime startDt = filter.EffectiveStartDateTime;
         DateTime endDt = filter.EffectiveEndDateTime;
+
+        // Ако крайният час е зададен с точност до минута (секунди == 0), включваме цялата последна минута до :59
+        if (endDt.Second == 0)
+        {
+            endDt = endDt.AddSeconds(59);
+        }
 
         cmd.Parameters.Add(new FbParameter("@StartDate", FbDbType.TimeStamp) { Value = startDt });
         cmd.Parameters.Add(new FbParameter("@EndDate", FbDbType.TimeStamp) { Value = endDt });
