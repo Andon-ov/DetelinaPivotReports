@@ -44,7 +44,7 @@ public class ConfigService : IConfigService
                     Port = fbElement.TryGetProperty("Port", out var p) && p.TryGetInt32(out var pVal) ? pVal : 3050,
                     Database = fbElement.TryGetProperty("Database", out var d) ? d.GetString() ?? @"C:\Users\a.andonov\АТМ\ELTRADEBACKOFFICE.GDB" : @"C:\Users\a.andonov\АТМ\ELTRADEBACKOFFICE.GDB",
                     User = fbElement.TryGetProperty("User", out var u) ? u.GetString() ?? "SYSDBA" : "SYSDBA",
-                    Password = fbElement.TryGetProperty("Password", out var pwd) ? pwd.GetString() ?? "masterkey" : "masterkey",
+                    Password = SecurityHelper.DecryptPassword(fbElement.TryGetProperty("Password", out var pwd) ? pwd.GetString() ?? "masterkey" : "masterkey"),
                     Charset = fbElement.TryGetProperty("Charset", out var c) ? c.GetString() ?? "WIN1251" : "WIN1251",
                     ConnectionTimeout = fbElement.TryGetProperty("ConnectionTimeout", out var ct) && ct.TryGetInt32(out var ctVal) ? ctVal : 15
                 };
@@ -97,7 +97,7 @@ public class ConfigService : IConfigService
                 ["Port"] = settings.Port,
                 ["Database"] = settings.Database,
                 ["User"] = settings.User,
-                ["Password"] = settings.Password,
+                ["Password"] = SecurityHelper.EncryptPassword(settings.Password),
                 ["Charset"] = settings.Charset,
                 ["ConnectionTimeout"] = settings.ConnectionTimeout
             };
